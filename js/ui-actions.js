@@ -73,12 +73,14 @@ function toggle(id){
   const mxp = m.xp||XPR[m.rank]||50;
   if(m.done){
     m.done=false;
+    m.updatedAt=Date.now();
     gainXP(-mxp);
     S.totalComp=Math.max(0,S.totalComp-1);
     if(S.catCounts&&S.catCounts[m.cat]) S.catCounts[m.cat]=Math.max(0,(S.catCounts[m.cat]||1)-1);
     logDailyMission(m.cat, mxp, false);
   } else {
     m.done=true;
+    m.updatedAt=Date.now();
     m.lastDoneDate=getTodayISODate(); // ISO YYYY-MM-DD para comparación exacta
     gainXP(mxp);
     S.totalComp++;
@@ -110,6 +112,7 @@ function saveEditMission(id){
   if(freqEl) m.freq=freqEl.value;
   const visionEl=document.getElementById('ie-vision-'+id);
   if(visionEl) m.visionImg=visionEl.value;
+  m.updatedAt=Date.now();
   editingMissionId=null;
   // reassign daily if needed
   S.dailyAssigned=null; assignDailyMissions();
@@ -143,12 +146,14 @@ function toggleWeekly(missionId){
   const mxp = XPR[m.rank] || 10;
   if(m.weeklyDone){
     m.weeklyDone = false;
+    m.updatedAt = Date.now();
     gainXP(-mxp);
     S.totalComp = Math.max(0, S.totalComp-1);
     if(S.catCounts&&S.catCounts[m.cat]) S.catCounts[m.cat]=Math.max(0,(S.catCounts[m.cat]||1)-1);
     logDailyMission(m.cat, mxp, false);
   } else {
     m.weeklyDone = true;
+    m.updatedAt = Date.now();
     m.lastDoneDate = getTodayISODate();
     gainXP(mxp);
     S.totalComp++;
@@ -181,12 +186,14 @@ function toggleMonthly(missionId){
   const mxp = XPR[m.rank] || 10;
   if(m.monthlyDone){
     m.monthlyDone = false;
+    m.updatedAt = Date.now();
     gainXP(-mxp);
     S.totalComp = Math.max(0, S.totalComp-1);
     if(S.catCounts&&S.catCounts[m.cat]) S.catCounts[m.cat]=Math.max(0,(S.catCounts[m.cat]||1)-1);
     logDailyMission(m.cat, mxp, false);
   } else {
     m.monthlyDone = true;
+    m.updatedAt = Date.now();
     m.lastDoneDate = getTodayISODate();
     gainXP(mxp);
     S.totalComp++;
@@ -651,7 +658,8 @@ function addMission(){
     freq: freqEl ? freqEl.value : 'daily',
     visionImg: visionImgEl ? visionImgEl.value : '',
     createdDate:new Date().toLocaleDateString('es-CO',{year:'numeric',month:'2-digit',day:'2-digit'}),
-    lastDoneDate:null
+    lastDoneDate:null,
+    updatedAt: Date.now()
   };
   S.missions.push(m);
   document.getElementById('mNameInp').value='';

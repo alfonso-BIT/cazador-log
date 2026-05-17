@@ -932,7 +932,8 @@ function saveBook(){
     const prev = S.books[idx];
     const prevProg = prev.progress||0;
     S.books[idx] = {...prev, title, author, status, cat, pages, notes, progress, ico, coverUrl,
-      finishedAt: status==='done'&&prev.status!=='done' ? localISO() : (prev.finishedAt||null)
+      finishedAt: status==='done'&&prev.status!=='done' ? localISO() : (prev.finishedAt||null),
+      updatedAt: Date.now()
     };
     // XP: libro recién terminado
     if(status==='done' && prev.status!=='done'){
@@ -959,7 +960,7 @@ function saveBook(){
     const id = 'b'+S.nBid;
     S.nBid++;
     S.books.push({ id, title, author, status, cat, pages, notes, progress, ico, coverUrl,
-      addedAt: localISO(), finishedAt: status==='done'?localISO():null });
+      addedAt: localISO(), finishedAt: status==='done'?localISO():null, updatedAt: Date.now() });
     // XP: añadir libro
     gainXP(40);
     notif('📚 Libro añadido +40 XP');

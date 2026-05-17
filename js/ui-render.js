@@ -61,6 +61,7 @@ function render(){
   if(activeTab === 'inventory')  renderInventory();
   if(activeTab === 'perfil')     renderPerfil();
   if(activeTab === 'dinero')     renderFinTab();
+  if(activeTab === 'config')     renderAchievEditor();
   // ── Mood siempre visible en el tab de misiones ──
   renderMoodWidget();
 }

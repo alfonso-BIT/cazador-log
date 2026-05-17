@@ -11,6 +11,7 @@
 // ║       2. Si Gist configurado → gistPull() silencioso antes del render. ║
 // ║       3. Llama restoreSessionUI() → checkReset() → render().           ║
 // ║       4. Si fromLogin: oculta #loginOver, muestra notif bienvenida.    ║
+// ║       5. Llama syncStart() → pull periódico + visibilitychange (§02-C) ║
 // ║                                                                          ║
 // ║   · doLogin()                                                            ║
 // ║       Lee #loginUser.value y delega en bootSession(u, true).           ║
@@ -65,6 +66,7 @@ async function bootSession(u, fromLogin = false){
     notif('▸ BIENVENIDO, ' + u.toUpperCase() + ' ◂');
     if(!S.missions || S.missions.length === 0) setTimeout(openTplModal, 400);
   }
+  syncStart();  // §02-C: arranca pull periódico + listener de visibilidad
 }
 
 function doLogin(){
@@ -74,6 +76,7 @@ function doLogin(){
 }
 
 function doLogout(){
+  syncStop();   // §02-C: detener live sync antes de limpiar sesión
   currentUser = null;
   S = null;
   localStorage.removeItem('sl_current_user');
@@ -308,12 +311,28 @@ function assignMonthlyMission(){
 
 function getWeeklyMission(){
   if(!S.weeklyAssigned || !S.weeklyAssigned.id) return null;
-  return S.missions.find(m => m.id === S.weeklyAssigned.id) || null;
+  const wm = S.missions.find(m => m.id === S.weeklyAssigned.id);
+  if(!wm){
+    // ID guardado ya no existe (migración o borrado) — forzar reasignación (fix v16)
+    S.weeklyAssigned = null;
+    assignWeeklyMission();
+    return S.weeklyAssigned && S.weeklyAssigned.id
+      ? S.missions.find(m => m.id === S.weeklyAssigned.id) || null : null;
+  }
+  return wm;
 }
 
 function getMonthlyMission(){
   if(!S.monthlyAssigned || !S.monthlyAssigned.id) return null;
-  return S.missions.find(m => m.id === S.monthlyAssigned.id) || null;
+  const mm = S.missions.find(m => m.id === S.monthlyAssigned.id);
+  if(!mm){
+    // ID guardado ya no existe (migración o borrado) — forzar reasignación (fix v16)
+    S.monthlyAssigned = null;
+    assignMonthlyMission();
+    return S.monthlyAssigned && S.monthlyAssigned.id
+      ? S.missions.find(m => m.id === S.monthlyAssigned.id) || null : null;
+  }
+  return mm;
 }
 
 // ╔══════════════════════════════════════════════════════════════════════════╗
