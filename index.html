@@ -1,0 +1,1189 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Daily Quest Log</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/dashboard.css">
+  <link rel="stylesheet" href="css/cards.css">
+  <link rel="stylesheet" href="css/modals.css">
+  <link rel="stylesheet" href="css/responsive.css">
+  <link rel="stylesheet" href="css/biblioteca.css">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+<div class="gridbg"></div>
+<div class="scanlines"></div>
+<div class="notif" id="notif"></div>
+<div class="lvlflash" id="lvlf"></div>
+
+<!-- DEVICE DETECTION BANNER -->
+<div class="device-banner" id="deviceBanner">
+  <div class="device-banner-dot"></div>
+  <span id="deviceLabel">DETECTANDO DISPOSITIVO...</span>
+</div>
+
+<!-- LOGIN OVERLAY -->
+<div class="loginover" id="loginOver">
+  <div class="login-box">
+    <div class="login-title">▸ SISTEMA DE CAZADOR ◂</div>
+    <div class="login-sub"><span class="txt-full">Ingresa tu nombre de usuario para acceder.<br>Tus misiones, XP y objetos se guardan automáticamente en este navegador — <strong style="color:var(--blue)">no se pierden al recargar.</strong><br><span style="color:rgba(96,165,250,0.5);">Si eres nuevo, se creará tu perfil al instante.</span></span><span class="txt-short">Ingresa tu usuario. Datos guardados localmente.<br><span style="color:rgba(96,165,250,0.5);">Nuevo aquí — tu perfil se crea al instante.</span></span></div>
+    <input class="login-inp" id="loginUser" placeholder="Nombre de usuario..." maxlength="30" onkeydown="if(event.key==='Enter')doLogin()">
+    <input class="login-inp" id="loginPass" type="password" placeholder="Contraseña (opcional)..." maxlength="30" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="login-btn" onclick="doLogin()">◈ ENTRAR AL SISTEMA ◈</button>
+    <div style="font-size:10px;color:var(--muted);text-align:center;margin-top:10px;letter-spacing:1px;">💾 Datos guardados localmente — permanentes en este navegador.</div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modover" id="modal">
+  <div class="modal">
+    <div class="modtitle" id="modT">ACCIÓN</div>
+    <div class="modbody" id="modB"></div>
+    <div class="modacts" id="modActs">
+      <button class="mbtn ok" onclick="confirmRedeem()">CONFIRMAR</button>
+      <button class="mbtn no" onclick="closeModal()">CANCELAR</button>
+    </div>
+  </div>
+</div>
+<div class="modover" id="delInvModal">
+  <div class="modal del-modal">
+    <div class="del-modal-eyebrow">⚠ ADVERTENCIA DEL SISTEMA</div>
+    <div class="del-modal-title">ELIMINAR OBJETO</div>
+    <div class="del-modal-item" id="delInvName">—</div>
+    <div class="del-modal-body" id="delInvBody"></div>
+    <div class="del-modal-warn">Esta acción es <span class="del-modal-warn-hl">permanente</span> e irreversible.</div>
+    <div class="modacts" style="margin-top:18px;">
+      <button class="mbtn del-confirm" onclick="confirmDelInv()">🗑 ELIMINAR</button>
+      <button class="mbtn no" onclick="closDelInv()">CANCELAR</button>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+  <!-- saveIndicator: elemento oculto requerido por save() — no renderiza nada visible -->
+  <span id="saveIndicator" style="position:fixed;bottom:12px;right:14px;font-size:10px;color:var(--green);letter-spacing:1px;opacity:0;transition:opacity 0.5s;z-index:9000;pointer-events:none;font-family:'Orbitron',monospace;">💾 GUARDADO</span>
+
+  <!-- HEADER -->
+  <div class="hdr">
+    <div class="hdr-sub">▸ SISTEMA DE CAZADOR ◂</div>
+    <div class="hdr-title">DAILY QUEST LOG</div>
+    <div class="hdr-time" id="sysTime">—</div>
+  </div>
+
+  <!-- PLAYER CARD -->
+  <div class="pcard">
+    <div class="phdr">
+      <div class="avatar" id="avatarEl">⚔️<canvas class="avatar-morph-canvas" id="avatarMorphCanvas"></canvas><div class="avatar-morph-ring" id="avatarMorphRing"></div></div>
+
+      <div class="pinfo">
+        <!-- Fila 1: nombre + nivel pegados + iconos -->
+        <div class="pinfo-top">
+          <div class="pinfo-name-lvl">
+            <div class="pname" id="pname">CAZADOR</div>
+            <div class="pmeta-lvl">
+              <span class="pmeta-lvlnum" id="plvl">LV.1</span>
+              <span class="pmeta-lvllbl">NVL</span>
+            </div>
+            <div class="pmeta-balance" id="pcardBalance" style="display:none;"></div>
+          </div>
+          <div class="pcard-icon-actions">
+            <button class="pcard-icon-btn" onclick="switchTab('config')" title="⚙️ Ajustes — Configurar misiones, tienda y rangos">⚙️</button>
+            <button class="pcard-icon-btn" onclick="switchTab('perfil')" title="📊 Perfil — Estadísticas, radar y logros">📊</button>
+            <button class="pcard-icon-btn" onclick="switchTab('datos')" title="💾 Datos — Respaldo y exportación">💾</button>
+          </div>
+        </div>
+
+        <!-- Fila 2: clase -->
+        <div class="pclass" id="pclass">▸ CAZADOR INDEPENDIENTE</div>
+
+        <!-- Fila 3: rango -->
+        <div class="prank" id="prank">RANGO E</div>
+      </div>
+    </div>
+    <div class="class-banner" id="classBanner">
+      <div class="class-banner-title"><span class="txt-short">▸ CLASE — ESTA SEMANA</span><span class="txt-full">▸ CLASE DOMINANTE — ESTA SEMANA</span></div>
+      <div class="class-banner-name" id="classNameEl">—</div>
+      <div class="class-banner-desc" id="classDescEl">—</div>
+    </div>
+    <div class="xpsec">
+      <div class="xprow">
+        <span class="xplbl">▸ EXPERIENCIA</span>
+        <span class="xpval" id="xpdisp">0 / 100 XP</span>
+      </div>
+      <div class="xptrack"><div class="xpfill" id="xpbar" style="width:0%"></div></div>
+    </div>
+    <div class="stats3">
+      <div class="sbox"><div class="sval" id="stTotal">0</div><div class="skey">XP NIVEL</div></div>
+      <div class="sbox"><div class="sval" id="stStreak">0</div><div class="skey">RACHA DÍAS</div></div>
+      <div class="sbox"><div class="sval" id="stComp">0</div><div class="skey">MISIONES ✓</div></div>
+    </div>
+  </div>
+
+  <!-- TABS -->
+  <div class="tabs-wrapper">
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('missions')"><span class="txt-short">⚔️</span><span class="txt-full">MISIONES</span></button>
+    <button class="tab" onclick="switchTab('shop')"><span class="txt-short">🛒</span><span class="txt-full">TIENDA</span></button>
+    <button class="tab" onclick="switchTab('inventory')"><span class="txt-short">📦</span><span class="txt-full">INVENTARIO</span></button>
+    <button class="tab" onclick="switchTab('dinero')">💰<span class="txt-full"> DINERO</span></button>
+    <button class="tab" onclick="switchTab('biblioteca')">📚<span class="txt-full"> LIBROS</span></button>
+  </div>
+  </div>
+
+  <!-- TAB: MISIONES DIARIAS -->
+  <div class="tabcontent active" id="tab-missions">
+    <!-- Libro del Mes widget (renderizado por biblioteca.js) -->
+    <div id="bookOfMonthWidget"></div>
+    <div class="resetbar">
+      <div>
+        <div class="rlbl"><span class="txt-short">RESET EN</span><span class="txt-full">RESET DIARIO EN</span></div>
+        <div class="rcd" id="rcd">23:59:59</div>
+        <div style="font-size:calc(9px * var(--fs-scale));color:var(--muted);letter-spacing:1px;margin-top:2px;" id="resetHourLbl">RESET A LAS 00:00</div>
+      </div>
+      <div>
+        <div class="rlbl">HORA DE RESET</div>
+        <div class="reset-hour-ctrl">
+          <button class="rhbtn" onclick="changeResetHour(-1)">−</button>
+          <div class="rh-val" id="rhVal">00:00</div>
+          <button class="rhbtn" onclick="changeResetHour(1)">+</button>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="rlbl">XP HOY</div>
+        <div class="rcd" id="todayxp" style="color:var(--gold)">+0</div>
+      </div>
+    </div>
+    <div class="penbar" id="penbar">
+      <div class="pentitle">⚠ AVISO DEL SISTEMA</div>
+      <div class="pentext">No completaste todas tus misiones mínimas ayer. El Sistema observa tu progreso, Cazador.</div>
+    </div>
+    <div id="daily-section">
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ MISIONES FIJAS HOY</span><div class="sline"></div></div>
+    <div class="tip-block">
+      <span class="tip-base">4 misiones mínimas de hoy, una por categoría.</span>
+      <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>
+      <div class="tip-detail">El sistema elige automáticamente 1 misión de cada categoría principal (Salud, Guerrero, Estudio, Hábitos). Si tienes muchas misiones creadas, las rota para que no se repitan. Completa las 4 para reclamar la recompensa diaria y mantener tu racha. Usa el botón 🔀 en cualquier misión para cambiarla por una aleatoria de todo el banco — así las misiones recién creadas también pueden aparecer.</div>
+    </div>
+    <div id="mlist"></div>
+    <div class="progtxt" id="progtxt">0 / 4 misiones mínimas completadas</div>
+    <button class="claimbtn" id="claimbtn" onclick="claimDaily()" disabled><span class="txt-short">◈ RECLAMAR ◈</span><span class="txt-full">◈ RECLAMAR RECOMPENSA DIARIA ◈</span></button>
+    </div><!-- end daily-section -->
+
+    <!-- MISIÓN SEMANAL -->
+    <div id="weekly-section" style="margin-top:14px;">
+      <div class="shdr"><div class="sline"></div><span class="stitle">📆 MISIÓN SEMANAL</span><div class="sline"></div></div>
+      <div class="tip-block">
+        <span class="tip-base">Una misión especial que se renueva cada semana.</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>
+        <div class="tip-detail">El sistema elige automáticamente 1 misión semanal del banco. Puedes completarla en cualquier momento de la semana. La recompensa es mayor que la diaria y la misión se resetea automáticamente cada lunes. Usa 🔀 para cambiarla si no te convence.</div>
+      </div>
+      <div id="weekly-mlist"></div>
+      <button class="claimbtn" id="weekly-claimbtn" onclick="claimWeekly()" disabled style="background:linear-gradient(135deg,rgba(251,191,36,0.15),rgba(217,119,6,0.12));border-color:rgba(251,191,36,0.4);"><span class="txt-short">◈ RECLAMAR ◈</span><span class="txt-full">◈ RECLAMAR RECOMPENSA SEMANAL ◈</span></button>
+    </div><!-- end weekly-section -->
+
+    <!-- MISIÓN MENSUAL -->
+    <div id="monthly-section" style="margin-top:14px;">
+      <div class="shdr"><div class="sline"></div><span class="stitle">🗓️ MISIÓN MENSUAL</span><div class="sline"></div></div>
+      <div class="tip-block">
+        <span class="tip-base">Un gran desafío mensual con recompensa élite.</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>
+        <div class="tip-detail">El sistema elige 1 misión mensual del banco. Puedes completarla cuando quieras durante el mes. La recompensa es la más alta del sistema. Se resetea automáticamente el primer día de cada mes. Usa 🔀 para cambiarla si prefieres otra.</div>
+      </div>
+      <div id="monthly-mlist"></div>
+      <button class="claimbtn" id="monthly-claimbtn" onclick="claimMonthly()" disabled style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(124,58,237,0.12));border-color:rgba(167,139,250,0.4);"><span class="txt-short">◈ RECLAMAR ◈</span><span class="txt-full">◈ RECLAMAR RECOMPENSA MENSUAL ◈</span></button>
+    </div><!-- end monthly-section -->
+
+    <!-- BANCO DE MISIONES — expandible con botón + -->
+    <div style="margin-top:16px;">
+      <div class="shdr" style="cursor:pointer;user-select:none;" onclick="toggleAllQuests()">
+        <div class="sline"></div>
+        <span class="stitle">◈ BANCO DE MISIONES</span>
+        <button id="allQuestsToggleBtn" class="allquests-toggle-btn">+</button>
+        <div class="sline"></div>
+      </div>
+      <div id="allQuestsPanel" style="display:none;">
+        <div class="tip-block">
+          <span class="tip-base">Todas tus misiones — márcalas aunque no estén en el mínimo diario.</span>
+          <button class="tip-toggle" onclick="tipToggle(this)">ⓘ MÁS INFO</button>
+          <div class="tip-detail">Las 4 misiones del día son las mínimas obligatorias, pero puedes completar cualquier otra misión de tu banco y también ganará XP. Úsalo para registrar todo lo que lograste hoy. Filtra por categoría o busca por nombre para encontrar rápido.</div>
+        </div>
+        <div class="searchbar">
+          <input class="search-inp" id="questSearch" placeholder="🔍 Buscar misión..." oninput="renderAllQuests()">
+          <select class="ie-sel" id="questCatFilter" onchange="renderAllQuests()" style="padding:8px 10px;background:rgba(0,20,50,0.85);border:1px solid rgba(0,100,200,0.28);color:var(--bright);font-family:'Rajdhani',sans-serif;font-size:calc(13px * var(--fs-scale));outline:none;">
+            <option value="">Todas las categorías</option>
+            <option value="salud">💪 Salud/Ejercicio</option>
+            <option value="guerrero">⚔️ Guerrero/Pesas</option>
+            <option value="estudio">📚 Estudio/Trabajo</option>
+            <option value="lectura">📖 Lectura/Mago</option>
+            <option value="habitos">🌟 Hábitos</option>
+            <option value="creatividad">🎨 Creatividad</option>
+            <option value="mental">🧘 Salud Mental</option>
+            <option value="familia">👨‍👩‍👧 Familia</option>
+            <option value="trabajo">💼 Trabajo</option>
+            <option value="viajes">🏍️ Viajes</option>
+            <option value="logros">🏆 Logros</option>
+            <option value="visionboard">🖼️ Vision Board</option>
+          </select>
+          <select class="ie-sel" id="questFreqFilter" onchange="renderAllQuests()" style="padding:8px 10px;background:rgba(0,20,50,0.85);border:1px solid rgba(0,100,200,0.28);color:var(--bright);font-family:'Rajdhani',sans-serif;font-size:calc(13px * var(--fs-scale));outline:none;">
+            <option value="">Toda frecuencia</option>
+            <option value="daily">🌅 Diaria</option>
+            <option value="weekly">📆 Semanal</option>
+            <option value="monthly">🗓️ Mensual</option>
+          </select>
+        </div>
+        <div id="allQuestList"></div>
+      </div>
+    </div>
+
+    <!-- MOOD WIDGET -->
+    <div class="shdr" style="margin-top:18px;"><div class="sline"></div><span class="stitle">◈ ESTADO MENTAL DEL DÍA</span><div class="sline"></div></div>
+    <div class="mood-card" id="moodCard">
+      <div class="mood-title"><span class="txt-short">▸ MONITOR MENTAL</span><span class="txt-full">▸ SISTEMA DE MONITOREO MENTAL</span></div>
+      <div class="mood-subtitle">¿Cómo te sentiste hoy, Cazador?
+        <button class="tip-toggle" style="margin-left:6px;" onclick="tipToggle(this)">ⓘ ¿PARA QUÉ SIRVE?</button>
+        <div class="tip-detail">Registrar tu estado de ánimo suma XP en la categoría Salud Mental y alimenta el historial en tu perfil. Solo puedes registrarlo una vez por día, pero puedes cambiarlo si te equivocas. Ayuda a detectar patrones en tu bienestar a lo largo de semanas.</div>
+      </div>
+      <div class="mood-xp-badge" id="moodXpBadge">+XP MENTAL</div>
+      <div class="mood-faces" id="moodFaces">
+        <button class="mood-btn" id="mood-0" onclick="setMood(0)">
+          <div class="mood-face">😭</div>
+          <div class="mood-lbl">PÉSIMO</div>
+        </button>
+        <button class="mood-btn" id="mood-1" onclick="setMood(1)">
+          <div class="mood-face">😔</div>
+          <div class="mood-lbl">MAL</div>
+        </button>
+        <button class="mood-btn" id="mood-2" onclick="setMood(2)">
+          <div class="mood-face">😐</div>
+          <div class="mood-lbl">REGULAR</div>
+        </button>
+        <button class="mood-btn" id="mood-3" onclick="setMood(3)">
+          <div class="mood-face">😄</div>
+          <div class="mood-lbl">BIEN</div>
+        </button>
+        <button class="mood-btn" id="mood-4" onclick="setMood(4)">
+          <div class="mood-face">🤩</div>
+          <div class="mood-lbl">EXCELENTE</div>
+        </button>
+      </div>
+      <div class="mood-saved" id="moodSaved">▸ ESTADO REGISTRADO HOY</div>
+    </div>
+  </div>
+
+  <!-- TAB: TIENDA -->
+  <div class="tabcontent" id="tab-shop">
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ <span class="txt-short">TIENDA</span><span class="txt-full">TIENDA — CANJEA TUS DESEOS</span></span><div class="sline"></div></div>
+    <div class="tip-block">
+      <span class="tip-base">Canjea tus deseos con XP de Tienda — tu nivel nunca baja al comprar.</span>
+      <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>
+      <div class="tip-detail">Cada misión que completas gana <strong style="color:var(--gold)">XP de Tienda</strong> además del XP de nivel normal. El XP de Tienda es tu moneda de compra — al canjear un objeto se descuenta de aquí, <strong style="color:var(--blue)">no de tu nivel ni de tu barra de XP</strong>. Así nunca puedes bajar de nivel por comprar. Si tienes un Colchón de Seguridad configurado, también se valida tu balance real antes de permitir la compra.</div>
+    </div>
+    <!-- XP de Tienda disponible -->
+    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(240,192,64,0.07);border:1px solid rgba(240,192,64,0.28);border-left:3px solid var(--gold);padding:10px 14px;margin-bottom:12px;">
+      <div>
+        <div style="font-family:'Orbitron',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:3px;">◈ XP DE TIENDA DISPONIBLE</div>
+        <div style="font-family:'Orbitron',monospace;font-size:20px;font-weight:700;color:var(--gold);" id="shopXPDisplay">0</div>
+      </div>
+      <div style="text-align:right;font-size:10px;color:var(--muted);line-height:1.7;max-width:160px;">XP de nivel: <span style="color:var(--bright);font-family:'Orbitron',monospace;" id="shopTotalXPDisplay">0</span><br><span style="font-size:9px;color:rgba(0,170,255,0.6);">El nivel no cambia al comprar</span></div>
+    </div>
+    <!-- Selector de periodo global para la tienda -->
+    <div style="display:flex;gap:0;margin-bottom:14px;border:1px solid rgba(0,170,255,0.25);">
+      <button class="ptbtn active" id="sp-day"   onclick="setShopPeriod('day')"><span class="txt-short">HOY</span><span class="txt-full">▸ HOY</span></button>
+      <button class="ptbtn"        id="sp-week"  onclick="setShopPeriod('week')"><span class="txt-short">SEMANA</span><span class="txt-full">▸ SEMANA</span></button>
+      <button class="ptbtn"        id="sp-month" onclick="setShopPeriod('month')"><span class="txt-short">MES</span><span class="txt-full">▸ MES</span></button>
+    </div>
+    <div class="invgrid" id="shopGrid"></div>
+    <div style="font-size:calc(10px * var(--fs-scale));color:var(--muted);text-align:center;margin-top:16px;letter-spacing:1px;">Añade objetos en CONFIGURAR → TIENDA</div>
+  </div>
+
+  <!-- TAB: INVENTARIO (lo comprado) -->
+  <div class="tabcontent" id="tab-inventory">
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ <span class="txt-short">INVENTARIO</span><span class="txt-full">INVENTARIO — OBJETOS OBTENIDOS</span></span><div class="sline"></div></div>
+    <div class="tip-block">
+      <span class="tip-base">Objetos que ya canjeaste en la Tienda.</span>
+      <button class="tip-toggle" onclick="tipToggle(this)">ⓘ MÁS INFO</button>
+      <div class="tip-detail">Una vez que compras un objeto con XP, aparece aquí como obtenido. El XP ya fue descontado de tu total. Puedes ver la fecha en que lo creaste y cuándo lo ganaste. Usa el botón <strong style="color:var(--danger)">🗑 ELIMINAR OBJETO</strong> para borrar un objeto del inventario — esta acción es permanente y no devuelve XP ni dinero.</div>
+    </div>
+    <div class="invgrid" id="invgrid"></div>
+    <div style="font-size:calc(10px * var(--fs-scale));color:var(--muted);text-align:center;margin-top:16px;letter-spacing:1px;" id="invEmpty">Aún no has canjeado ningún objeto.</div>
+  </div>
+
+  <!-- TAB: PERFIL -->
+  <div class="tabcontent" id="tab-perfil">
+
+    <!-- IDs ocultos requeridos por renderPerfil() — no se muestran -->
+    <span id="profileName" style="display:none"></span>
+    <span id="profileLvl"  style="display:none"></span>
+    <span id="profileClass" style="display:none"></span>
+    <span id="profileAvatar" style="display:none"></span>
+
+    <!-- Selector semana / mes -->
+    <div class="period-toggle">
+      <button class="ptbtn active" id="pt-week" onclick="setPeriod('week')"><span class="txt-short">SEMANA</span><span class="txt-full">▸ ESTA SEMANA</span></button>
+      <button class="ptbtn" id="pt-month" onclick="setPeriod('month')"><span class="txt-short">MES</span><span class="txt-full">▸ ESTE MES</span></button>
+    </div>
+
+    <!-- RADAR SVG — Habilidades Core -->
+    <div class="radar-wrap">
+      <div class="radar-title">◈ RADAR — HABILIDADES CORE</div>
+      <svg id="radarSVG" viewBox="0 0 380 320" width="100%" style="max-width:400px;" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <!-- RADAR SVG 2 — Áreas de Vida -->
+    <div class="radar-wrap" style="margin-top:8px;">
+      <div class="radar-title">◈ RADAR — ÁREAS DE VIDA</div>
+      <svg id="radarSVG2" viewBox="0 0 380 320" width="100%" style="max-width:400px;" xmlns="http://www.w3.org/2000/svg"></svg>
+    </div>
+
+    <!-- Barras por categoría -->
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ DESGLOSE POR CATEGORÍA</span><div class="sline"></div></div>
+    <div class="stats-bars" id="catBars"></div>
+
+    <!-- Frecuencia de misiones -->
+    <div class="shdr" style="margin-top:16px;"><div class="sline"></div><span class="stitle">◈ DISTRIBUCIÓN DE MISIONES</span><div class="sline"></div></div>
+    <div id="freqStats" style="padding:4px 0;"></div>
+
+    <!-- Resumen numérico -->
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ RESUMEN DEL PERÍODO</span><div class="sline"></div></div>
+    <div class="summary-grid" id="summaryGrid"></div>
+
+    <!-- Logros -->
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ LOGROS</span><div class="sline"></div></div>
+    <div class="achiev-list" id="achievList"></div>
+
+    <div class="shdr" style="margin-top:16px;"><div class="sline"></div><span class="stitle">◈ HISTORIAL DE ÁNIMO</span><div class="sline"></div></div>
+    <div id="moodHistory" style="background:rgba(0,10,25,0.8);border:1px solid rgba(96,165,250,0.2);padding:14px;"></div>
+  </div>
+
+  <!-- TAB: CONFIGURAR -->
+  <div class="tabcontent" id="tab-config">
+
+    <!-- ── CONTROLES DE SISTEMA ────────────────────────────────────────────
+         Tamaño de texto y cerrar sesión. Movidos aquí desde la player card
+         para no romper la responsividad de la tarjeta principal.
+    ──────────────────────────────────────────────────────────────────── -->
+    <div class="cfg-sys-bar">
+      <div class="cfg-sys-group">
+        <span class="cfg-sys-lbl">🔤 TAMAÑO DE TEXTO</span>
+        <div class="cfg-font-ctrl">
+          <button class="cfg-font-btn" onclick="changeFontSize(-1)" title="Reducir tamaño de texto">T−</button>
+          <span class="cfg-font-val" id="fontVal">15px</span>
+          <button class="cfg-font-btn" onclick="changeFontSize(1)" title="Aumentar tamaño de texto">T+</button>
+        </div>
+      </div>
+      <button class="cfg-logout-btn" onclick="if(confirm('¿Seguro que deseas salir?')) doLogout()" title="Cerrar sesión y cambiar de usuario">↩ SALIR</button>
+    </div>
+
+
+
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ <span class="txt-short">AÑADIR MISIÓN</span><span class="txt-full">AÑADIR MISIÓN AL BANCO</span></span><div class="sline"></div></div>
+    <div class="aform">
+      <button class="tpl-open-cfg-btn" onclick="openTplModal('import')">📋 CARGAR MISIONES DESDE PLANTILLA</button>
+      <button class="tpl-open-tut-btn" onclick="openTplModal('tutorial')">📖 VER TUTORIAL DE MISIONES</button>
+      <button class="tpl-open-cfg-btn" style="background:linear-gradient(135deg,rgba(139,92,246,0.25),rgba(167,139,250,0.15));border-color:rgba(139,92,246,0.5);color:#c4b5fd;" onclick="if(confirm('¿Cargar todas las misiones de tu Vision Board? Se omitirán duplicados.')) loadVisionBoardMissions()">🖼️ CARGAR MISIONES DEL VISION BOARD</button>
+      <div class="tip-block">
+        <span class="tip-base">Las misiones se rotan automáticamente cada día.</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA LA ROTACIÓN?</button>
+        <div class="tip-detail">Puedes crear decenas de misiones y el sistema selecciona 4 al día (1 por categoría principal). Elige la que llevas más tiempo sin hacer para mantener variedad. Si marcas una misión como "Fija", aparecerá todos los días sin importar la rotación. Las misiones no fijas se alternan automáticamente.</div>
+      </div>
+      <div class="frow">
+        <label class="flbl">Nombre de la misión</label>
+        <input class="finput" id="mNameInp" placeholder="Ej: Correr 30 minutos">
+      </div>
+      <div class="frow">
+        <label class="flbl">Descripción (opcional)</label>
+        <input class="finput" id="mDescInp" placeholder="Más detalles">
+      </div>
+      <div class="fgrid">
+        <div class="frow" style="margin-bottom:0">
+          <label class="flbl">Categoría / Clase</label>
+          <select class="fselect" id="mCatInp" onchange="toggleVisionBoardField(this.value)">
+            <option value="salud">💪 Salud / Sanador</option>
+            <option value="guerrero">⚔️ Ejercicio Pesas / Guerrero</option>
+            <option value="estudio">📚 Estudio / Mago</option>
+            <option value="lectura">📖 Lectura / Archimago</option>
+            <option value="habitos">🌟 Hábitos / Asesino</option>
+            <option value="creatividad">🎨 Creatividad / Bardo</option>
+            <option value="mental">🧘 Salud Mental / Monje</option>
+            <option value="familia">👨‍👩‍👧 Familia / Guardián</option>
+            <option value="trabajo">💼 Trabajo / Maestro</option>
+            <option value="viajes">🏍️ Viajes / Explorador</option>
+            <option value="logros">🏆 Logros / Campeón</option>
+            <option value="visionboard">🖼️ Vision Board / Visionario</option>
+          </select>
+        </div>
+        <div class="frow" style="margin-bottom:0">
+          <label class="flbl">Rango / XP</label>
+          <select class="fselect" id="mRankInp">
+            <option value="D">D — fácil</option>
+            <option value="C">C</option>
+            <option value="B" selected>B</option>
+            <option value="A">A</option>
+            <option value="S">S — épico</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow" style="margin-top:10px">
+        <label class="flbl">¿Es misión fija diaria? (aparece siempre)</label>
+        <select class="fselect" id="mFixedInp">
+          <option value="0">No — rotar automáticamente</option>
+          <option value="1">Sí — mostrar siempre</option>
+        </select>
+      </div>
+      <div class="frow" style="margin-top:10px">
+        <label class="flbl">📅 Frecuencia de la misión</label>
+        <select class="fselect" id="mFreqInp">
+          <option value="daily">🌅 Diaria — se activa todos los días</option>
+          <option value="weekly">📆 Semanal — se activa cada semana</option>
+          <option value="monthly">🗓️ Mensual — se activa cada mes</option>
+        </select>
+      </div>
+      <div class="frow" id="visionBoardRow" style="margin-top:10px;display:none">
+        <label class="flbl">🖼️ Imagen del Vision Board</label>
+        <select class="fselect" id="mVisionImgInp">
+          <option value="">— Sin imagen —</option>
+          <option value="familia.png">👨‍👩‍👧 familia.png — Rutinas de Familia</option>
+          <option value="trabajo.png">💼 trabajo.png — Lista de Trabajo</option>
+          <option value="viajes_.png">🏍️ viajes_.png — Plan de Viajes</option>
+          <option value="Salud.png">💪 Salud.png — Hábitos de Salud</option>
+          <option value="hobbies.png">🎨 hobbies.png — Hobbies y Pasatiempos</option>
+          <option value="Logros.png">🏆 Logros.png — A Lograr</option>
+        </select>
+      </div>
+      <button class="fabtn" style="margin-top:10px" onclick="addMission()">+ AÑADIR MISIÓN</button>
+    </div>
+
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ AÑADIR OBJETO A LA TIENDA</span><div class="sline"></div></div>
+    <div class="aform">
+      <div class="frow">
+        <label class="flbl">Nombre del objeto</label>
+        <input class="finput" id="iNameInp" placeholder="Ej: Audífonos Sony WH-1000XM5">
+      </div>
+      <div class="fgrid">
+        <div class="frow" style="margin-bottom:0">
+          <label class="flbl">Emoji / Ícono</label>
+          <div class="ep-wrap" id="ep-shop-wrap">
+            <div class="ep-trigger-row">
+              <input class="finput" id="iIcoInp" placeholder="🎧" style="font-size:22px;text-align:center" maxlength="4">
+              <button class="ep-open-btn" type="button" onclick="epToggle('ep-shop')">😀 ELEGIR</button>
+            </div>
+            <div class="ep-panel" id="ep-shop">
+              <input class="ep-search" placeholder="🔍 Buscar emoji..." oninput="epSearch(this,'ep-shop')" autocomplete="off">
+              <div class="ep-cats" id="ep-shop-cats"></div>
+              <div class="ep-grid" id="ep-shop-grid"></div>
+            </div>
+          </div>
+        </div>
+        <div class="frow" style="margin-bottom:0">
+          <label class="flbl">Costo en XP</label>
+          <input type="number" class="finput" id="iCostInp" placeholder="Ej: 300" min="1">
+        </div>
+      </div>
+      <div class="frow" style="margin-top:10px">
+        <label class="flbl">Precio real (COP)</label>
+        <input class="finput" id="iPriceInp" placeholder="Ej: $45.000">
+      </div>
+      <div class="frow">
+        <label class="flbl">Rareza</label>
+        <select class="fselect" id="iRarInp">
+          <option value="common">Común — objetos pequeños</option>
+          <option value="rare">Raro — deseos medianos</option>
+          <option value="epic">Épico — algo especial</option>
+          <option value="legendary">Legendario — gran recompensa</option>
+        </select>
+      </div>
+      <button class="fabtn gold" onclick="addItem()">+ AÑADIR A LA TIENDA</button>
+    </div>
+
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ COLCHÓN DE SEGURIDAD</span><div class="sline"></div></div>
+    <div class="aform">
+      <div class="tip-block">
+        <span class="tip-base">Define un monto mínimo de dinero que siempre debes conservar.</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>
+        <div class="tip-detail">Si tu balance total es igual o menor a este tope, la tienda bloqueará las compras. Solo podrás comprar cuando tengas ese tope <strong style="color:var(--blue)">más</strong> el precio real del objeto. Por ejemplo: tope=$100.000, objeto=$50.000 → necesitas al menos $150.000. Pon 0 para desactivarlo.</div>
+      </div>
+      <div class="frow">
+        <label class="flbl">Tope mínimo (COP) — 0 = sin límite</label>
+        <input type="number" class="finput" id="minBalInp" placeholder="Ej: 100000" min="0" step="1000">
+      </div>
+      <div id="minBalStatus" style="font-size:calc(10px * var(--fs-scale));margin-top:6px;padding:7px 10px;background:rgba(0,10,25,0.7);border:1px solid rgba(0,100,200,0.18);display:none;"></div>
+      <button class="fabtn gold" style="margin-top:8px;" onclick="saveMinBalance()"><span class="txt-short">✓ GUARDAR TOPE</span><span class="txt-full">GUARDAR TOPE MÍNIMO</span></button>
+    </div>
+
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ AÑADIR LOGRO PERSONALIZADO</span><div class="sline"></div></div>
+    <div class="aform">
+      <div class="tip-block">
+        <span class="tip-base">Crea y edita tus logros con condiciones personalizadas.</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿QUÉ SON LOS LOGROS?</button>
+        <div class="tip-detail">Los logros son metas que se desbloquean automáticamente cuando cumples la condición (nivel, racha, XP total, misiones completadas…). Puedes elegir el ícono, nombre y descripción. Los cambios se reflejan en la pestaña <strong style="color:var(--blue)">PERFIL</strong>. El tipo "Manual" lo marcas tú mismo cuando lo logres.</div>
+      </div>
+      <div class="frow">
+        <label class="flbl">Nombre del logro</label>
+        <input class="finput" id="aNameInp" placeholder="Ej: Primer nivel alcanzado">
+      </div>
+      <div class="frow">
+        <label class="flbl">Descripción</label>
+        <input class="finput" id="aDescInp" placeholder="Ej: Alcanza el nivel 1">
+      </div>
+      <div class="fgrid">
+        <div class="frow" style="margin-bottom:0">
+          <label class="flbl">Emoji / Ícono</label>
+          <div class="ep-wrap" id="ep-achiev-new-wrap">
+            <div class="ep-trigger-row">
+              <input class="finput" id="aIcoInp" placeholder="🏆" style="font-size:22px;text-align:center" maxlength="4">
+              <button class="ep-open-btn" type="button" onclick="epToggle('ep-achiev-new')">😀 ELEGIR</button>
+            </div>
+            <div class="ep-panel" id="ep-achiev-new">
+              <input class="ep-search" placeholder="🔍 Buscar emoji..." oninput="epSearch(this,'ep-achiev-new')" autocomplete="off">
+              <div class="ep-cats" id="ep-achiev-new-cats"></div>
+              <div class="ep-grid" id="ep-achiev-new-grid"></div>
+            </div>
+          </div>
+        </div>
+        <div class="frow" style="margin-bottom:0">
+          <label class="flbl">Condición</label>
+          <select class="fselect" id="aTypeInp" onchange="aTypeChange(this.value)">
+            <option value="totalComp">Total misiones</option>
+            <option value="streak">Racha días</option>
+            <option value="level">Nivel</option>
+            <option value="totalXP">XP total</option>
+            <option value="catMax">Cat. dominante</option>
+            <option value="redeem">Canjes</option>
+            <option value="custom">Manual</option>
+          </select>
+        </div>
+      </div>
+      <div class="frow" id="aTargetRow" style="margin-top:10px">
+        <label class="flbl">Meta (número a alcanzar)</label>
+        <input type="number" class="finput" id="aTargetInp" placeholder="Ej: 10" min="1" value="10">
+      </div>
+      <button class="fabtn gold" style="margin-top:10px" onclick="addAchiev()">+ AÑADIR LOGRO</button>
+      <button class="fabtn" style="margin-top:6px;" onclick="S.achievements=defaultAchievements();save();notif('LOGROS RESTAURADOS');">↺ RESTAURAR LOGROS ORIGINALES</button>
+    </div>
+
+
+
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ PERFIL DE CAZADOR</span><div class="sline"></div></div>
+    <button class="fabtn" onclick="toggleNameForm()" id="nameToggleBtn"><span class="txt-short">✏ NOMBRE</span><span class="txt-full">✏ CAMBIAR NOMBRE</span></button>
+    <div class="aform" id="nameFormBox" style="display:none;margin-top:8px;">
+      <div class="frow">
+        <label class="flbl">Nombre visible en pantalla</label>
+        <input class="finput" id="nameInp" placeholder="Ej: SUNG JIN-WOO" onkeydown="if(event.key==='Enter')saveName()">
+      </div>
+      <div style="display:flex;gap:6px;margin-top:4px;">
+        <button class="fabtn" style="flex:1" onclick="saveName()">✓ GUARDAR NOMBRE</button>
+        <button class="fabtn" style="flex:1;border-color:rgba(0,100,200,0.3);color:var(--muted);" onclick="toggleNameForm()">✕ CANCELAR</button>
+      </div>
+    </div>
+
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ <span class="txt-short">RANGOS XP</span><span class="txt-full">CONFIGURAR RANGOS (XP)</span></span><div class="sline"></div></div>
+    <div class="aform">
+      <div class="tip-block">
+        <span class="tip-base">Ajusta cuánto XP otorga cada rango de misión.</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿QUÉ ES CADA RANGO?</button>
+        <div class="tip-detail">Los rangos van de D (fácil) a S (épico). Al crear una misión le asignas un rango, y ese rango determina cuántos XP ganas al completarla. Por defecto: D=15, C=30, B=50, A=80, S=120. Puedes ajustarlos aquí para que el juego se adapte a tu ritmo.</div>
+      </div>
+      <div class="rank-cfg-grid">
+        <div class="rank-box"><div class="rank-box-lbl rd" style="color:var(--d)">D</div><input class="rank-inp" id="xp-D" type="number" min="1"></div>
+        <div class="rank-box"><div class="rank-box-lbl" style="color:var(--c)">C</div><input class="rank-inp" id="xp-C" type="number" min="1"></div>
+        <div class="rank-box"><div class="rank-box-lbl" style="color:var(--b)">B</div><input class="rank-inp" id="xp-B" type="number" min="1"></div>
+        <div class="rank-box"><div class="rank-box-lbl" style="color:var(--a)">A</div><input class="rank-inp" id="xp-A" type="number" min="1"></div>
+        <div class="rank-box"><div class="rank-box-lbl" style="color:var(--s)">S</div><input class="rank-inp" id="xp-S" type="number" min="1"></div>
+      </div>
+      <button class="fabtn" style="margin-top:10px" onclick="saveRanks()"><span class="txt-short">✓ GUARDAR</span><span class="txt-full">GUARDAR RANGOS</span></button>
+    </div>
+
+        <div class="shdr"><div class="sline"></div><span class="stitle">◈ ZONA DE PELIGRO</span><div class="sline"></div></div>
+    <button class="fabtn red" style="width:100%" onclick="resetAll()">⚠ REINICIAR TODO EL SISTEMA</button>
+    <div class="tip-block" style="text-align:center;margin-top:8px;">
+      <span class="tip-base" style="font-size:calc(10px * var(--fs-scale));">Esto borrará todo tu progreso permanentemente.</span>
+      <button class="tip-toggle" onclick="tipToggle(this)">ⓘ QUÉ SE BORRA</button>
+      <div class="tip-detail" style="text-align:left;">Se eliminan: misiones, XP, nivel, racha, logros, objetos de tienda e inventario, transacciones de dinero y todas las estadísticas. <strong style="color:var(--danger)">Esta acción no se puede deshacer.</strong> Solo afecta al usuario actualmente activo en este navegador.</div>
+    </div>
+  </div>
+
+  <!-- TAB: DINERO -->
+  <div class="tabcontent" id="tab-dinero">
+    <div class="shdr"><div class="sline"></div><span class="stitle">💰 CONTROL DE FINANZAS</span><div class="sline"></div></div>
+
+    <!-- Period selector -->
+    <div class="fin-period-bar">
+      <button class="fin-ptbtn active" id="fp-day"   onclick="setFinPeriod('day')">▸ DÍA</button>
+      <button class="fin-ptbtn"        id="fp-week"  onclick="setFinPeriod('week')">▸ SEMANA</button>
+      <button class="fin-ptbtn"        id="fp-month" onclick="setFinPeriod('month')">▸ MES</button>
+      <button class="fin-ptbtn"        id="fp-year"  onclick="setFinPeriod('year')">▸ AÑO</button>
+    </div>
+    <!-- Period navigator -->
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin:8px 0 4px;">
+      <button onclick="finNavStep(-1)" style="background:rgba(0,100,200,0.15);border:1px solid rgba(0,100,200,0.3);color:var(--bright);padding:4px 12px;border-radius:4px;cursor:pointer;font-family:'Orbitron',monospace;font-size:11px;">◀</button>
+      <span id="finPeriodLabel" style="font-family:'Orbitron',monospace;font-size:calc(10px * var(--fs-scale));color:var(--accent);letter-spacing:1px;min-width:160px;text-align:center;">HOY</span>
+      <button onclick="finNavStep(1)" id="finNavNext" style="background:rgba(0,100,200,0.15);border:1px solid rgba(0,100,200,0.3);color:var(--bright);padding:4px 12px;border-radius:4px;cursor:pointer;font-family:'Orbitron',monospace;font-size:11px;">▶</button>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="fin-summary">
+      <div class="fin-box income">
+        <div class="fin-box-val" id="finIncome">$0</div>
+        <div class="fin-box-lbl">INGRESOS</div>
+      </div>
+      <div class="fin-box expense">
+        <div class="fin-box-val" id="finExpense">$0</div>
+        <div class="fin-box-lbl">GASTOS</div>
+      </div>
+      <div class="fin-box balance">
+        <div class="fin-box-val" id="finBalance">$0</div>
+        <div class="fin-box-lbl">BALANCE</div>
+      </div>
+    </div>
+
+    <!-- Bar chart by day -->
+    <div class="fin-chart-wrap">
+      <div class="fin-chart-title">◈ GASTOS VS INGRESOS</div>
+      <div id="finChartBars"></div>
+    </div>
+
+    <!-- Category breakdown chart -->
+    <div class="fin-chart-wrap">
+      <div class="fin-chart-title">◈ GASTOS POR CATEGORÍA</div>
+      <div id="finCatChart"></div>
+    </div>
+
+    <!-- Add transaction form -->
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ REGISTRAR MOVIMIENTO</span><div class="sline"></div></div>
+    <div class="fin-form">
+      <div class="fin-type-toggle">
+        <button class="fin-type-btn active-expense" id="fin-btn-expense" onclick="setFinType('expense')">▼ GASTO</button>
+        <button class="fin-type-btn" id="fin-btn-income" onclick="setFinType('income')">▲ INGRESO</button>
+      </div>
+      <div class="frow">
+        <label class="flbl">Descripción</label>
+        <input class="finput" id="finDesc" placeholder="Ej: Almuerzo, Nómina, Transporte...">
+      </div>
+      <div class="fgrid" style="margin-bottom:10px;">
+        <div class="frow" style="margin-bottom:0;">
+          <label class="flbl">Monto ($)</label>
+          <input type="number" class="finput" id="finAmt" placeholder="Ej: 15000" min="1" onkeydown="if(event.key==='Enter')addTransaction()">
+        </div>
+        <div class="frow" style="margin-bottom:0;">
+          <label class="flbl">Emoji</label>
+          <div class="ep-wrap" id="ep-fin-wrap">
+            <div class="ep-trigger-row">
+              <input class="finput" id="finIco" placeholder="💸" style="font-size:20px;text-align:center;" maxlength="4">
+              <button class="ep-open-btn" type="button" onclick="epToggle('ep-fin')">😀 ELEGIR</button>
+            </div>
+            <div class="ep-panel" id="ep-fin">
+              <input class="ep-search" placeholder="🔍 Buscar emoji..." oninput="epSearch(this,'ep-fin')" autocomplete="off">
+              <div class="ep-cats" id="ep-fin-cats"></div>
+              <div class="ep-grid" id="ep-fin-grid"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="frow">
+        <label class="flbl">Categoría de gasto</label>
+        <div class="fin-cat-grid" id="finCatGrid">
+          <div class="fin-cat-btn sel" data-cat="comida" onclick="selectFinCat(this)">🍔<br>Comida</div>
+          <div class="fin-cat-btn" data-cat="transporte" onclick="selectFinCat(this)">🚌<br>Transp.</div>
+          <div class="fin-cat-btn" data-cat="salud" onclick="selectFinCat(this)">💊<br>Salud</div>
+          <div class="fin-cat-btn" data-cat="ocio" onclick="selectFinCat(this)">🎮<br>Ocio</div>
+          <div class="fin-cat-btn" data-cat="compras" onclick="selectFinCat(this)">🛍️<br>Compras</div>
+          <div class="fin-cat-btn" data-cat="educacion" onclick="selectFinCat(this)">📚<br>Educ.</div>
+          <div class="fin-cat-btn" data-cat="hogar" onclick="selectFinCat(this)">🏠<br>Hogar</div>
+          <div class="fin-cat-btn" data-cat="otro" onclick="selectFinCat(this)">📦<br>Otro</div>
+        </div>
+      </div>
+      <button class="fabtn" id="finAddBtn" onclick="addTransaction()" style="border-color:rgba(255,68,102,0.5);color:#ff6688;">+ REGISTRAR GASTO</button>
+    </div>
+
+    <!-- Backup / Restore -->
+    <!-- Transaction list -->
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ MOVIMIENTOS DEL PERÍODO</span><div class="sline"></div></div>
+    <div id="finTxList"><div class="fin-empty">Sin movimientos registrados.</div></div>
+  </div>
+
+  <!-- TAB: BIBLIOTECA -->
+  <div class="tabcontent" id="tab-biblioteca">
+    <!-- Renderizado dinámico por renderBiblioteca() en biblioteca.js -->
+  </div>
+
+  <!-- TAB: DATOS -->
+  <div class="tabcontent" id="tab-datos">
+    <div class="bk-hero">
+      <div class="bk-hero-icon">💾</div>
+      <div class="bk-hero-title">SISTEMA DE DATOS</div>
+      <div class="bk-hero-sub">Respalda y restaura tu progreso. Sin servidores — todo local.</div>
+    </div>
+
+    <!-- JSON: cambiar de dispositivo -->
+    <div class="bk-section">
+      <div class="bk-section-eyebrow">◈ PASO A PASO — CAMBIAR DE DISPOSITIVO</div>
+      <div class="bk-section-title">Respaldo Completo (JSON)</div>
+      <div class="tip-block">
+        <span class="tip-base">¿Qué es esto?</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ VER EXPLICACIÓN</button>
+        <div class="tip-detail">El sistema guarda todo tu progreso en este navegador. Si cambias de celular, computador o navegador, perderías todo — a menos que lo respaldes aquí.<br><br>Este botón crea un archivo <strong style="color:var(--blue)">.json</strong> (como una foto de tu perfil). Guárdalo en tu galería, Google Drive o WhatsApp contigo mismo. Cuando lo necesites, cárgalo con el botón "RESTAURAR" y todo volverá exactamente igual.</div>
+      </div>
+      <div class="bk-card">
+        <div class="bk-card-row">
+          <div class="bk-card-info">
+            <div class="bk-card-label">① GUARDAR MIS DATOS</div>
+            <div class="bk-card-detail">Toca aquí para descargar tu respaldo. Guarda ese archivo en un lugar seguro.</div>
+          </div>
+          <button class="bk-btn blue" onclick="exportBackupJSON()">⬇ DESCARGAR</button>
+        </div>
+      </div>
+      <div class="bk-card" style="margin-top:8px;">
+        <div class="bk-card-row">
+          <div class="bk-card-info">
+            <div class="bk-card-label">② RESTAURAR EN OTRO DISPOSITIVO</div>
+            <div class="bk-card-detail">En el nuevo dispositivo, abre la app y toca aquí para seleccionar el archivo que descargaste.</div>
+          </div>
+          <label class="bk-btn green">⬆ CARGAR<input type="file" accept=".json" style="display:none" onchange="importBackupJSON(this)"></label>
+        </div>
+      </div>
+      <div class="tip-block" style="margin-top:10px;">
+        <button class="tip-toggle" onclick="tipToggle(this)">⚠ ¿QUÉ PASA AL RESTAURAR?</button>
+        <div class="tip-detail">Al cargar un archivo de respaldo, tus datos actuales se reemplazarán con los del archivo. Si ya tienes progreso en este dispositivo y no quieres perderlo, descárgalo primero con el botón ① antes de restaurar.</div>
+      </div>
+    </div>
+
+    <!-- XLSX completo -->
+    <div class="bk-section">
+      <div class="bk-section-eyebrow">◈ VER TU PROGRESO EN EXCEL</div>
+      <div class="bk-section-title">Informe Completo (Excel)</div>
+      <div class="tip-block">
+        <span class="tip-base">¿Para qué sirve?</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ VER EXPLICACIÓN</button>
+        <div class="tip-detail">Genera un archivo de Excel (.xlsx) con 5 hojas:<br><br>📋 <strong>Resumen</strong> — nivel, XP, balance general<br>⚔️ <strong>Misiones</strong> — todas tus misiones y su estado<br>💰 <strong>Finanzas</strong> — todos tus movimientos de dinero<br>📦 <strong>Inventario</strong> — objetos de tienda y canjeados<br>🏆 <strong>Logros</strong> — logros obtenidos y pendientes<br><br>Puedes abrirlo con Excel, Google Sheets o Numbers.</div>
+      </div>
+      <div class="bk-card">
+        <div class="bk-card-row">
+          <div class="bk-card-info">
+            <div class="bk-card-label">DESCARGAR INFORME COMPLETO</div>
+            <div class="bk-card-detail">Crea un Excel con todo tu historial. No borra ni cambia nada en la app.</div>
+          </div>
+          <button class="bk-btn purple" onclick="exportBackupXLSX()">📊 DESCARGAR</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- XLSX finanzas -->
+    <div class="bk-section">
+      <div class="bk-section-eyebrow">◈ SOLO GASTOS E INGRESOS</div>
+      <div class="bk-section-title">Excel de Finanzas</div>
+      <div class="tip-block">
+        <span class="tip-base">¿Cuándo usarlo?</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ VER EXPLICACIÓN</button>
+        <div class="tip-detail">Si solo quieres exportar o importar tus movimientos de dinero (sin tocar misiones, XP ni logros), usa esta opción.<br><br>El archivo tendrá una hoja por cada mes con tus gastos e ingresos organizados. También puedes cargar un Excel de finanzas descargado antes para recuperar movimientos sin afectar el resto de tu progreso.</div>
+      </div>
+      <div class="bk-card">
+        <div class="bk-card-row">
+          <div class="bk-card-info">
+            <div class="bk-card-label">EXPORTAR FINANZAS</div>
+            <div class="bk-card-detail">Descarga solo tus gastos e ingresos, organizados por mes.</div>
+          </div>
+          <button class="bk-btn blue" onclick="exportFinXLSX()">⬇ DESCARGAR</button>
+        </div>
+      </div>
+      <div class="bk-card" style="margin-top:8px;">
+        <div class="bk-card-row">
+          <div class="bk-card-info">
+            <div class="bk-card-label">IMPORTAR FINANZAS</div>
+            <div class="bk-card-detail">Carga un Excel de finanzas exportado antes. Los movimientos nuevos se agregan sin borrar los actuales.</div>
+          </div>
+          <label class="bk-btn green">⬆ CARGAR<input type="file" accept=".xlsx" style="display:none" onchange="importFinXLSX(this)"></label>
+        </div>
+      </div>
+    </div>
+
+    <!-- ☁ GITHUB GIST SYNC -->
+    <div class="bk-section">
+      <div class="bk-section-eyebrow">◈ SYNC AUTOMÁTICO — OPCIONAL</div>
+      <div class="bk-section-title">GitHub Gist <span id="gistStatus" style="font-size:9px;font-weight:400;letter-spacing:1px;margin-left:8px;">○ SIN CONFIGURAR</span></div>
+      <div class="tip-block">
+        <span class="tip-base">¿Para qué sirve?</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ VER EXPLICACIÓN</button>
+        <div class="tip-detail">Conecta la app a un <strong style="color:var(--blue)">GitHub Gist</strong> (archivo en la nube de GitHub, gratis). Una vez configurado, cada vez que guardes algo la app sube tus datos automáticamente. Puedes restaurarlos en cualquier dispositivo con el mismo token.<br><br>Necesitas una cuenta en <strong>github.com</strong> y crear un token en: Settings → Developer settings → Personal access tokens → Tokens (classic) → con permiso <strong>gist</strong>.</div>
+      </div>
+
+      <!-- Formulario de conexión (visible si no conectado) -->
+      <div id="gistForm">
+        <div class="bk-card">
+          <div class="bk-card-label" style="margin-bottom:8px;">PASO 1 — TOKEN DE GITHUB</div>
+          <div style="position:relative;display:flex;align-items:center;">
+            <input id="gistToken" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+              style="width:100%;box-sizing:border-box;background:rgba(0,20,50,0.8);border:1px solid rgba(0,100,200,0.3);color:var(--bright);padding:9px 36px 9px 10px;font-family:monospace;font-size:11px;letter-spacing:1px;outline:none;">
+            <button id="gistTokenToggle" onclick="toggleGistToken()" title="Mostrar / ocultar token"
+              style="position:absolute;right:0;top:0;bottom:0;width:34px;background:rgba(0,40,90,0.7);border:none;border-left:1px solid rgba(0,100,200,0.3);color:rgba(100,180,255,0.7);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:color 0.2s;">○</button>
+          </div>
+        </div>
+        <div class="bk-card" style="margin-top:6px;">
+          <div class="bk-card-label" style="margin-bottom:8px;">PASO 2 — ID DEL GIST</div>
+          <input id="gistId" type="text" placeholder="a1b2c3d4e5f6… (ID del Gist vacío)"
+            style="width:100%;box-sizing:border-box;background:rgba(0,20,50,0.8);border:1px solid rgba(0,100,200,0.3);color:var(--bright);padding:9px 10px;font-family:monospace;font-size:11px;letter-spacing:1px;outline:none;">
+        </div>
+        <div class="bk-card" style="margin-top:6px;">
+          <div class="bk-card-row">
+            <div class="bk-card-info">
+              <div class="bk-card-detail">Crea un Gist vacío en gist.github.com, copia su ID de la URL y pégalo arriba.</div>
+            </div>
+            <button id="gistBtnConnect" class="bk-btn blue" onclick="gistConnect()">✓ CONECTAR</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Panel conectado (visible si conectado) -->
+      <div id="gistConnected" style="display:none;">
+        <div class="bk-card">
+          <div class="bk-card-row">
+            <div class="bk-card-info">
+              <div class="bk-card-label">AUTO-SYNC ACTIVO</div>
+              <div class="bk-card-detail">Cada guardado sube tus datos al Gist automáticamente.</div>
+            </div>
+            <button id="gistBtnPull" class="bk-btn green" onclick="gistPullNow()">⬇ TRAER DATOS</button>
+          </div>
+        </div>
+        <div class="bk-card" style="margin-top:6px;">
+          <div class="bk-card-row">
+            <div class="bk-card-info">
+              <div class="bk-card-detail">Desconectar no borra tu Gist ni tus datos locales.</div>
+            </div>
+            <button id="gistBtnDisconnect" class="bk-btn" style="border-color:rgba(239,68,68,0.4);color:#f87171;" onclick="gistDisconnect()">✕ DESCONECTAR</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bk-footer">◈ Gist sync es opcional. Sin él, los datos siguen siendo solo locales.</div>
+  </div>
+
+</div><!-- end .wrap -->
+
+<!-- ════════════════════════════════════════════════════════════
+     MODAL: PLANTILLA DE MISIONES
+     Se abre automáticamente en primer login si el banco está vacío.
+     También accesible desde Configurar en cualquier momento.
+     ════════════════════════════════════════════════════════════ -->
+<div class="tpl-overlay" id="tplOverlay">
+  <div class="tpl-wrap">
+    <div class="tpl-header">
+      <div class="tpl-eyebrow">◈ SISTEMA DE CAZADOR</div>
+      <div class="tpl-title" id="tplModalTitle">MISIONES — INICIO</div>
+      <div class="tpl-sub" id="tplModalSub">Aprende cómo funcionan las misiones o importa las plantillas base.</div>
+    </div>
+
+    <!-- ── TABS INTERNAS ── -->
+    <div class="tpl-modal-tabs">
+      <button class="tpl-modal-tab active" id="tplTab-tutorial" onclick="switchTplTab('tutorial')">📖 TUTORIAL</button>
+      <button class="tpl-modal-tab" id="tplTab-import" onclick="switchTplTab('import')">📋 IMPORTAR</button>
+    </div>
+
+    <!-- ══════════════════════════════
+         PANEL: TUTORIAL
+    ══════════════════════════════ -->
+    <div class="tpl-modal-panel active" id="tplPanel-tutorial">
+
+      <div class="tut-box">
+        <div class="tut-box-lbl">◈ ¿QUÉ ES ESTO?</div>
+        <div class="tut-box-text">
+          Este sistema convierte tus hábitos diarios en <strong>misiones con XP</strong>.<br>
+          Cada misión tiene: un <strong>nombre</strong>, una <strong>descripción</strong>, una <strong>rareza</strong> (D→S) que define cuánto XP ganas, y una <strong>categoría</strong>.<br>
+          Las misiones <strong>fijas ★</strong> aparecen todos los días. Las del <strong>banco</strong> rotan automáticamente — 1 por categoría.
+        </div>
+      </div>
+
+      <div class="shdr"><div class="sline"></div><span class="stitle">◈ CATEGORÍAS DISPONIBLES</span><div class="sline"></div></div>
+      <div class="tut-cat-legend">
+        <div class="tut-cat-chip"><div class="tut-cat-emoji">💪</div><div class="tut-cat-dot" style="background:#4ade80"></div><div class="tut-cat-name">SALUD</div></div>
+        <div class="tut-cat-chip"><div class="tut-cat-emoji">⚔️</div><div class="tut-cat-dot" style="background:#ff6b35"></div><div class="tut-cat-name">GUERRERO</div></div>
+        <div class="tut-cat-chip"><div class="tut-cat-emoji">📚</div><div class="tut-cat-dot" style="background:#22d3ee"></div><div class="tut-cat-name">ESTUDIO</div></div>
+        <div class="tut-cat-chip"><div class="tut-cat-emoji">📖</div><div class="tut-cat-dot" style="background:#fb923c"></div><div class="tut-cat-name">LECTURA</div></div>
+        <div class="tut-cat-chip"><div class="tut-cat-emoji">🌟</div><div class="tut-cat-dot" style="background:#94a3b8"></div><div class="tut-cat-name">HÁBITOS</div></div>
+        <div class="tut-cat-chip"><div class="tut-cat-emoji">🎨</div><div class="tut-cat-dot" style="background:#f0c040"></div><div class="tut-cat-name">CREATIVIDAD</div></div>
+        <div class="tut-cat-chip"><div class="tut-cat-emoji">🧘</div><div class="tut-cat-dot" style="background:#60a5fa"></div><div class="tut-cat-name">MENTAL</div></div>
+      </div>
+
+      <div class="shdr"><div class="sline"></div><span class="stitle">◈ SISTEMA DE RAREZA Y XP</span><div class="sline"></div></div>
+      <div class="tut-rar-legend">Rareza: <span>Común D</span> → <span>Raro C</span> → <span>Épico B</span> → <span>Legendario A</span> → <span>S-Rank S</span></div>
+      <div class="tut-xp-guide">
+        <div class="tut-xpg-box"><div class="tut-xpg-val">15</div><div class="tut-xpg-rar rd">COMÚN — D</div><div class="tut-xpg-desc">Hábitos básicos. Fácil de completar.</div></div>
+        <div class="tut-xpg-box"><div class="tut-xpg-val">30</div><div class="tut-xpg-rar rc">RARO — C</div><div class="tut-xpg-desc">Rutinas que exigen constancia.</div></div>
+        <div class="tut-xpg-box"><div class="tut-xpg-val">50</div><div class="tut-xpg-rar rb">ÉPICO — B</div><div class="tut-xpg-desc">Metas de concentración real.</div></div>
+        <div class="tut-xpg-box"><div class="tut-xpg-val">80</div><div class="tut-xpg-rar ra">LEGENDARIO A</div><div class="tut-xpg-desc">Logros difíciles de sostener.</div></div>
+        <div class="tut-xpg-box"><div class="tut-xpg-val">120</div><div class="tut-xpg-rar rs">S-RANK — S</div><div class="tut-xpg-desc">Solo para los más disciplinados.</div></div>
+      </div>
+      <div class="tut-step-note"><strong>◈ NOTA</strong><br>Puedes ajustar el XP de cada rango desde <strong>Configurar → Configurar Rangos</strong>.</div>
+
+      <div class="shdr"><div class="sline"></div><span class="stitle">💪 EJEMPLO — SALUD</span><div class="sline"></div></div>
+      <div class="tut-mcard rank-c">
+        <div class="tut-mname">💧 Tomar 2 litros de agua</div>
+        <div class="tut-mdesc">Hidratación básica durante el día. Marca al alcanzar los 2L.</div>
+        <div class="tut-mfoot"><span class="mxp">+30 XP</span><span class="mrnk rc">RARO C</span><span style="font-size:9px;color:var(--muted);letter-spacing:2px;padding:2px 6px;border:1px solid rgba(0,100,200,0.15);">💪 SALUD</span></div>
+      </div>
+      <div class="tut-mcard rank-b">
+        <div class="tut-mname">🥗 Comer saludable todo el día</div>
+        <div class="tut-mdesc">Sin comida ultra-procesada. Frutas o vegetales en al menos 2 comidas.</div>
+        <div class="tut-mfoot"><span class="mxp">+50 XP</span><span class="mrnk rb">ÉPICO B</span><span style="font-size:9px;color:var(--muted);letter-spacing:2px;padding:2px 6px;border:1px solid rgba(0,100,200,0.15);">💪 SALUD</span></div>
+      </div>
+
+      <div class="shdr"><div class="sline"></div><span class="stitle">🌟 EJEMPLO — MISIONES FIJAS ★</span><div class="sline"></div></div>
+      <div class="tut-step-note"><strong>◈ ¿QUÉ SON LAS MISIONES FIJAS?</strong><br>Se marcan con <strong>★ FIJO</strong> al crearlas. Aparecen <em>todos los días</em> sin importar la rotación. Úsalas para hábitos que nunca deben faltar.</div>
+      <div class="tut-mcard fixed">
+        <div class="tut-mname">🌅 Rutina matutina completa</div>
+        <div class="tut-mdesc">Levantarte a tu hora + higiene + no revisar el celular por 30 min. El tono del día empieza aquí.</div>
+        <div class="tut-mfoot"><span class="mxp">+30 XP</span><span class="mrnk rc">RARO C</span><span class="fixed-badge">★ FIJO</span></div>
+      </div>
+      <div class="tut-mcard fixed">
+        <div class="tut-mname">🧘 Meditación o respiración consciente</div>
+        <div class="tut-mdesc">10 minutos mínimo. Box breathing, Wim Hof, o silencio total.</div>
+        <div class="tut-mfoot"><span class="mxp">+30 XP</span><span class="mrnk rc">RARO C</span><span class="fixed-badge">★ FIJO</span></div>
+      </div>
+
+      <div class="shdr"><div class="sline"></div><span class="stitle">◈ CÓMO AÑADIR MISIONES</span><div class="sline"></div></div>
+      <div class="tut-howto-grid">
+        <div class="tut-howto-row">
+          <div class="tut-howto-icon">1️⃣</div>
+          <div class="tut-howto-text">Abre la pestaña <strong>IMPORTAR</strong> (arriba) para añadir misiones de ejemplo con un clic.</div>
+        </div>
+        <div class="tut-howto-row">
+          <div class="tut-howto-icon">2️⃣</div>
+          <div class="tut-howto-text">También puedes ir a <strong>Configurar → Añadir Misión</strong> para crear las tuyas desde cero.</div>
+        </div>
+        <div class="tut-howto-row">
+          <div class="tut-howto-icon">3️⃣</div>
+          <div class="tut-howto-text">Al crear una misión, activa <strong>Misión Fija</strong> si quieres que aparezca todos los días sin excepción.</div>
+        </div>
+        <div class="tut-howto-row">
+          <div class="tut-howto-icon">4️⃣</div>
+          <div class="tut-howto-text">El sistema elige automáticamente <strong>una misión por categoría</strong> cada día al hacer el reset.</div>
+        </div>
+        <div class="tut-howto-row">
+          <div class="tut-howto-icon">5️⃣</div>
+          <div class="tut-howto-text">Toca <strong>🔀</strong> sobre cualquier misión del día para cambiarla por otra del banco.</div>
+        </div>
+      </div>
+
+      <div style="position:sticky;bottom:0;background:rgba(2,8,16,0.97);border-top:1px solid var(--border);padding:14px 0 0;margin-top:12px;display:flex;gap:8px;">
+        <button class="tpl-import-btn" style="flex:1" onclick="switchTplTab('import')">▸ IR A IMPORTAR MISIONES</button>
+        <button class="tpl-skip-btn" onclick="closeTplModal()">✕ CERRAR</button>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════
+         PANEL: IMPORTAR
+    ══════════════════════════════ -->
+    <div class="tpl-modal-panel" id="tplPanel-import">
+
+    <div class="tpl-intro">
+      Selecciona las misiones que quieras añadir a tu banco. Puedes editarlas después desde <strong>Configurar</strong>. Siempre podrás añadir más manualmente.
+    </div>
+
+    <!-- SALUD -->
+    <div class="tpl-cat-hdr"><div class="tpl-cat-line"></div><span class="tpl-cat-title">💪 SALUD — CLASE SANADOR</span><div class="tpl-cat-line"></div></div>
+    <div class="tpl-card rank-c" data-tpl-id="s1" data-cat="salud" data-rank="C" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">💧 Tomar 2 litros de agua</div>
+        <div class="tpl-desc">Hidratación básica durante el día. Marca al alcanzar los 2L.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+30 XP</span><span class="tpl-rnk rc">RARO C</span></div>
+      </div>
+    </div>
+    <div class="tpl-card rank-d" data-tpl-id="s2" data-cat="salud" data-rank="D" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🛌 Dormir 7-8 horas</div>
+        <div class="tpl-desc">Horario de sueño consistente. Sin pantallas 30 min antes.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+15 XP</span><span class="tpl-rnk rd">COMÚN D</span></div>
+      </div>
+    </div>
+    <div class="tpl-card rank-b" data-tpl-id="s3" data-cat="salud" data-rank="B" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🥗 Comer saludable todo el día</div>
+        <div class="tpl-desc">Sin comida ultra-procesada. Frutas o vegetales en al menos 2 comidas.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+50 XP</span><span class="tpl-rnk rb">ÉPICO B</span></div>
+      </div>
+    </div>
+    <div class="tpl-card rank-c" data-tpl-id="s4" data-cat="salud" data-rank="C" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🚶 Caminar 30 minutos</div>
+        <div class="tpl-desc">Paso activo. Puede dividirse en bloques de 10 min durante el día.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+30 XP</span><span class="tpl-rnk rc">RARO C</span></div>
+      </div>
+    </div>
+
+    <!-- GUERRERO -->
+    <div class="tpl-cat-hdr"><div class="tpl-cat-line"></div><span class="tpl-cat-title">⚔️ GUERRERO — CLASE GUERRERO</span><div class="tpl-cat-line"></div></div>
+    <div class="tpl-card rank-b" data-tpl-id="g1" data-cat="guerrero" data-rank="B" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🏋️ Sesión de entrenamiento</div>
+        <div class="tpl-desc">Al menos 30 minutos de ejercicio de fuerza o cardio intenso.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+50 XP</span><span class="tpl-rnk rb">ÉPICO B</span></div>
+      </div>
+    </div>
+    <div class="tpl-card rank-s" data-tpl-id="g2" data-cat="guerrero" data-rank="S" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🔥 100 push-ups en el día</div>
+        <div class="tpl-desc">Distribuidos como quieras. Cada set cuenta. Máxima disciplina del Guerrero.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+120 XP</span><span class="tpl-rnk rs">S-RANK S</span></div>
+      </div>
+    </div>
+    <div class="tpl-card rank-c" data-tpl-id="g3" data-cat="guerrero" data-rank="C" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🧘 Estiramiento post-entreno</div>
+        <div class="tpl-desc">10 minutos de stretching después del ejercicio. Previene lesiones.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+30 XP</span><span class="tpl-rnk rc">RARO C</span></div>
+      </div>
+    </div>
+
+    <!-- ESTUDIO -->
+    <div class="tpl-cat-hdr"><div class="tpl-cat-line"></div><span class="tpl-cat-title">📚 ESTUDIO — CLASE MAGO</span><div class="tpl-cat-line"></div></div>
+    <div class="tpl-card rank-b" data-tpl-id="e1" data-cat="estudio" data-rank="B" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">📖 Estudiar 1 hora sin distracciones</div>
+        <div class="tpl-desc">Deep work o Pomodoro. Sin celular, sin redes sociales.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+50 XP</span><span class="tpl-rnk rb">ÉPICO B</span></div>
+      </div>
+    </div>
+    <div class="tpl-card rank-a" data-tpl-id="e2" data-cat="estudio" data-rank="A" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">💡 Aprender algo completamente nuevo</div>
+        <div class="tpl-desc">Un concepto, técnica o habilidad que nunca habías explorado. Documenta qué aprendiste.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+80 XP</span><span class="tpl-rnk ra">LEGENDARIO A</span></div>
+      </div>
+    </div>
+    <div class="tpl-card rank-c" data-tpl-id="e3" data-cat="estudio" data-rank="C" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🎧 Escuchar 1 podcast educativo</div>
+        <div class="tpl-desc">Al menos 20 minutos de contenido valioso mientras haces otras tareas.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+30 XP</span><span class="tpl-rnk rc">RARO C</span></div>
+      </div>
+    </div>
+
+    <!-- HÁBITOS -->
+    <div class="tpl-cat-hdr"><div class="tpl-cat-line"></div><span class="tpl-cat-title">🌟 HÁBITOS — CLASE ASESINO (FIJAS ★)</span><div class="tpl-cat-line"></div></div>
+    <div class="tpl-card fixed-tpl" data-tpl-id="h1" data-cat="habitos" data-rank="C" data-fixed="1" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🌅 Rutina matutina completa</div>
+        <div class="tpl-desc">Levantarte a tu hora objetivo + higiene + no revisar el celular por 30 min.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+30 XP</span><span class="tpl-rnk rc">RARO C</span><span class="tpl-fixed-badge">★ FIJA</span></div>
+      </div>
+    </div>
+    <div class="tpl-card fixed-tpl" data-tpl-id="h2" data-cat="habitos" data-rank="D" data-fixed="1" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">✍️ Escribir en el diario</div>
+        <div class="tpl-desc">Al menos 5 minutos. ¿Qué pasó hoy? ¿Qué agradeces? ¿Qué mejorarías?</div>
+        <div class="tpl-foot"><span class="tpl-xp">+15 XP</span><span class="tpl-rnk rd">COMÚN D</span><span class="tpl-fixed-badge">★ FIJA</span></div>
+      </div>
+    </div>
+
+    <!-- MENTAL -->
+    <div class="tpl-cat-hdr"><div class="tpl-cat-line"></div><span class="tpl-cat-title">🧘 MENTAL — CLASE MONJE (FIJA ★)</span><div class="tpl-cat-line"></div></div>
+    <div class="tpl-card fixed-tpl" data-tpl-id="m1" data-cat="mental" data-rank="C" data-fixed="1" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🧘 Meditación o respiración consciente</div>
+        <div class="tpl-desc">10 minutos mínimo. Box breathing, Wim Hof, o silencio total. Antes de dormir es ideal.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+30 XP</span><span class="tpl-rnk rc">RARO C</span><span class="tpl-fixed-badge">★ FIJA</span></div>
+      </div>
+    </div>
+
+    <!-- LECTURA -->
+    <div class="tpl-cat-hdr"><div class="tpl-cat-line"></div><span class="tpl-cat-title">📖 LECTURA — CLASE ARCHIMAGO</span><div class="tpl-cat-line"></div></div>
+    <div class="tpl-card rank-c" data-tpl-id="l1" data-cat="lectura" data-rank="C" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">📚 Leer 20 páginas</div>
+        <div class="tpl-desc">Cualquier libro. Ficción, no-ficción, técnico. Lo importante es el hábito.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+30 XP</span><span class="tpl-rnk rc">RARO C</span></div>
+      </div>
+    </div>
+    <div class="tpl-card rank-b" data-tpl-id="l2" data-cat="lectura" data-rank="B" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">📕 Terminar un capítulo completo</div>
+        <div class="tpl-desc">Sin interrupciones. Concentración total en el texto. Anota una idea clave al terminar.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+50 XP</span><span class="tpl-rnk rb">ÉPICO B</span></div>
+      </div>
+    </div>
+
+    <!-- CREATIVIDAD -->
+    <div class="tpl-cat-hdr"><div class="tpl-cat-line"></div><span class="tpl-cat-title">🎨 CREATIVIDAD — CLASE BARDO</span><div class="tpl-cat-line"></div></div>
+    <div class="tpl-card rank-c" data-tpl-id="cr1" data-cat="creatividad" data-rank="C" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🎨 Crear algo nuevo hoy</div>
+        <div class="tpl-desc">Dibujar, escribir, diseñar, tocar, grabar. Cualquier expresión creativa cuenta.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+30 XP</span><span class="tpl-rnk rc">RARO C</span></div>
+      </div>
+    </div>
+    <div class="tpl-card rank-b" data-tpl-id="cr2" data-cat="creatividad" data-rank="B" data-fixed="0" onclick="tplToggle(this)">
+      <div class="tpl-chk">✓</div>
+      <div class="tpl-content">
+        <div class="tpl-name">🖊️ Escribir 500 palabras</div>
+        <div class="tpl-desc">Diario, ensayo, historia, ideas. Lo que sea. Solo escribe sin editar.</div>
+        <div class="tpl-foot"><span class="tpl-xp">+50 XP</span><span class="tpl-rnk rb">ÉPICO B</span></div>
+      </div>
+    </div>
+
+    <!-- ACTION BAR -->
+    <div class="tpl-action-bar">
+      <span class="tpl-counter" id="tplCounter">0 seleccionadas</span>
+      <button class="tpl-sel-all" onclick="tplSelectAll()">☑ TODAS</button>
+      <button class="tpl-sel-all" onclick="tplDeselectAll()">☐ NINGUNA</button>
+      <button class="tpl-import-btn" id="tplImportBtn" onclick="importTemplates()" disabled>▸ IMPORTAR AL BANCO</button>
+      <button class="tpl-skip-btn" onclick="closeTplModal()">✕ OMITIR</button>
+    </div>
+
+    </div><!-- end tplPanel-import -->
+  </div><!-- end tpl-wrap -->
+</div>
+
+
+  <script src="js/constants.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/rewards.js"></script>
+  <script src="js/animations.js"></script>
+  <script src="js/notifications.js"></script>
+  <script src="js/effects.js"></script>
+  <script src="js/ui-backup.js"></script>
+  <script src="js/ui-finance.js"></script>
+  <script src="js/ui-utils.js"></script>
+  <script src="js/ui-mood.js"></script>
+  <script src="js/ui-actions.js"></script>
+  <script src="js/ui-render.js"></script>
+  <script src="js/ui-init.js"></script>
+  <script src="js/biblioteca.js"></script>
+
+
+  <!-- TOOLTIP MODAL GLOBAL -->
+  <div id="tipModal" onclick="closeTipModal(event)">
+    <div class="tip-modal-box" onclick="event.stopPropagation()">
+      <div class="tip-modal-header">
+        <div class="tip-modal-icon">ⓘ</div>
+        <div class="tip-modal-title" id="tipModalTitle"></div>
+        <button class="tip-modal-close" onclick="closeTipModal()">✕</button>
+      </div>
+      <div class="tip-modal-body" id="tipModalBody"></div>
+    </div>
+  </div>
+
+
+
+</body>
+</html>
