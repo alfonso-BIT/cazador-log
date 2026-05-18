@@ -738,7 +738,6 @@ function addMission(){
   save();
   switchTab('missions'); // primero cambia el tab
   renderWithFlash();     // luego renderiza ya con el tab activo
-  toggleAllQuests(true); // abrir banco para que la misión nueva sea visible
   notif('▸ MISIÓN AÑADIDA: '+n);
 }
 
@@ -1030,7 +1029,6 @@ function loadVisionBoardMissions(){
   save();
   switchTab('missions');
   renderWithFlash();
-  toggleAllQuests(true); // abrir banco para que las misiones nuevas sean visibles
   notif('🖼️ ' + added.length + ' MISIONES CARGADAS DESDE VISION BOARD ◈');
 }
 

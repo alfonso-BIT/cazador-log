@@ -303,8 +303,10 @@ function importTemplates(){
   S.dailyAssigned = null;
   assignDailyMissions();
   save();
-  render();
   closeTplModal();
+  switchTab('missions');
+  toggleAllQuests(true);
+  render();
   notif('◈ ' + added + ' MISIONES AÑADIDAS AL BANCO ◈');
 }
 

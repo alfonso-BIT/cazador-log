@@ -163,7 +163,15 @@
       <div class="pentext">No completaste todas tus misiones mínimas ayer. El Sistema observa tu progreso, Cazador.</div>
     </div>
     <div id="daily-section">
-    <div class="shdr"><div class="sline"></div><span class="stitle">◈ MISIONES FIJAS HOY</span><div class="sline"></div></div>
+    <div class="shdr" style="position:relative;">
+      <div class="sline"></div>
+      <span class="stitle">◈ MISIONES FIJAS HOY</span>
+      <div class="sline"></div>
+      <div style="display:flex;gap:7px;margin-left:10px;flex-shrink:0;">
+        <button onclick="openTplModal('import')" title="Cargar misiones desde plantilla" style="padding:4px 10px;background:rgba(0,170,255,0.12);border:1px solid rgba(0,170,255,0.35);color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(8px * var(--fs-scale));letter-spacing:1px;cursor:pointer;border-radius:3px;white-space:nowrap;">📋 PLANTILLAS</button>
+        <button onclick="switchTab('config')" title="Crear nueva misión" style="padding:4px 10px;background:rgba(0,255,140,0.10);border:1px solid rgba(0,255,140,0.30);color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(8px * var(--fs-scale));letter-spacing:1px;cursor:pointer;border-radius:3px;white-space:nowrap;">✚ CREAR</button>
+      </div>
+    </div>
     <div class="tip-block">
       <span class="tip-base">4 misiones mínimas de hoy, una por categoría.</span>
       <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>

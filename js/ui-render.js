@@ -107,7 +107,15 @@ function renderDailyMissions(){
   if(dailySection) dailySection.style.display=completed?'none':'';
 
   if(!daily.length){
-    el.innerHTML='<div style="text-align:center;color:var(--muted);padding:28px;font-size:calc(12px * var(--fs-scale));letter-spacing:2px;">SIN MISIONES — AÑADE EN CONFIGURAR</div>';
+    el.innerHTML=`
+<div style="text-align:center;padding:28px 16px 20px;display:flex;flex-direction:column;align-items:center;gap:14px;">
+  <div style="color:var(--muted);font-size:calc(11px * var(--fs-scale));letter-spacing:2px;margin-bottom:4px;">◈ SIN MISIONES EN EL BANCO ◈</div>
+  <div style="color:var(--accent);font-size:calc(12px * var(--fs-scale));letter-spacing:1px;opacity:0.8;">Crea misiones para empezar a ganar XP</div>
+  <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:4px;">
+    <button onclick="openTplModal('import')" style="padding:10px 18px;background:linear-gradient(135deg,rgba(0,170,255,0.18),rgba(0,80,160,0.15));border:1px solid rgba(0,170,255,0.5);color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(10px * var(--fs-scale));letter-spacing:2px;cursor:pointer;border-radius:4px;">📋 CARGAR PLANTILLAS</button>
+    <button onclick="switchTab('config')" style="padding:10px 18px;background:linear-gradient(135deg,rgba(0,255,140,0.12),rgba(0,120,60,0.10));border:1px solid rgba(0,255,140,0.35);color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(10px * var(--fs-scale));letter-spacing:2px;cursor:pointer;border-radius:4px;">✚ CREAR MISIÓN</button>
+  </div>
+</div>`;
     if(progtxt) progtxt.textContent='0 / 0 misiones mínimas completadas';
     if(cb) cb.disabled=true;
     return;
