@@ -393,7 +393,6 @@
     <div class="aform">
       <button class="tpl-open-cfg-btn" onclick="openTplModal('import')">📋 CARGAR MISIONES DESDE PLANTILLA</button>
       <button class="tpl-open-tut-btn" onclick="openTplModal('tutorial')">📖 VER TUTORIAL DE MISIONES</button>
-      <button class="tpl-open-cfg-btn" style="background:linear-gradient(135deg,rgba(139,92,246,0.25),rgba(167,139,250,0.15));border-color:rgba(139,92,246,0.5);color:#c4b5fd;" onclick="if(confirm('¿Cargar todas las misiones de tu Vision Board? Se omitirán duplicados.')) loadVisionBoardMissions()">🖼️ CARGAR MISIONES DEL VISION BOARD</button>
       <div class="tip-block">
         <span class="tip-base">Las misiones se rotan automáticamente cada día.</span>
         <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA LA ROTACIÓN?</button>
@@ -1096,6 +1095,7 @@
       <button class="tpl-sel-all" onclick="tplSelectAll()">☑ TODAS</button>
       <button class="tpl-sel-all" onclick="tplDeselectAll()">☐ NINGUNA</button>
       <button class="tpl-import-btn" id="tplImportBtn" onclick="importTemplates()" disabled>▸ IMPORTAR AL BANCO</button>
+      <button class="tpl-import-btn" style="background:linear-gradient(135deg,rgba(139,92,246,0.35),rgba(167,139,250,0.2));border-color:rgba(139,92,246,0.6);color:#c4b5fd;" onclick="closeTplModal();if(confirm('¿Cargar todas las misiones de tu Vision Board? Se omitirán duplicados.')) loadVisionBoardMissions()">🖼️ VISION BOARD</button>
       <button class="tpl-skip-btn" onclick="closeTplModal()">✕ OMITIR</button>
     </div>
 
