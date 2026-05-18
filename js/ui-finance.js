@@ -188,99 +188,43 @@ function delTransaction(id){
 }
 
 // ── Charts ──
-function renderFinChartBars(txs, period, offset){
-  const el = document.getElementById('finChartBars'); if(!el) return;
-  const { from, to } = getFinRange(period, offset);
-  const buckets = [];
-
-  if(period === 'day'){
-    // Un solo día: desglose por categoría
-    const catTotals = {};
-    txs.filter(t=>t.type==='expense').forEach(t=>{ catTotals[t.cat]=(catTotals[t.cat]||0)+t.amt; });
-    const cats = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
-    if(!cats.length){ el.innerHTML='<div class="fin-empty" style="padding:14px">Sin gastos este día.</div>'; return; }
-    const maxC = cats[0][1];
-    el.innerHTML = cats.map(([cat,amt])=>`
-      <div class="fin-bar-row">
-        <div class="fin-bar-lbl" title="${FIN_CAT_LABELS[cat]||cat}">${FIN_CAT_EMOJI[cat]||'📦'}</div>
-        <div class="fin-bar-track"><div class="fin-bar-fill-exp" style="width:${Math.round(amt/maxC*100)}%"></div></div>
-        <div class="fin-bar-val">${formatCOP(amt)}</div>
-      </div>`).join('');
-    return;
-  }
-
-  if(period === 'week'){
-    // 7 barras día a día (lun → dom)
-    for(let i=0; i<7; i++){
-      const d = new Date(from); d.setDate(from.getDate()+i);
-      const iso = localISO(d);
-      const lbl = d.toLocaleDateString('es-CO',{weekday:'short',day:'numeric'}).toUpperCase();
-      buckets.push({iso, lbl, income:0, expense:0});
-    }
-  }
-  else if(period === 'month'){
-    // Una barra por semana del mes
-    let cur = new Date(from);
-    while(cur <= to){
-      const wStart = new Date(cur);
-      const wEnd = new Date(cur); wEnd.setDate(cur.getDate()+6); if(wEnd>to) wEnd.setTime(to.getTime());
-      const iso1 = localISO(wStart), iso2 = localISO(wEnd);
-      const lbl = wStart.toLocaleDateString('es-CO',{day:'numeric',month:'short'}).toUpperCase();
-      buckets.push({isoFrom:iso1, isoTo:iso2, lbl, income:0, expense:0});
-      cur.setDate(cur.getDate()+7);
-    }
-    txs.forEach(t=>{
-      const b = buckets.find(b=>t.date>=b.isoFrom && t.date<=b.isoTo);
-      if(!b) return;
-      if(t.type==='income') b.income+=t.amt; else b.expense+=t.amt;
-    });
-    _renderMultiBucketBars(el, buckets);
-    return;
-  }
-  else if(period === 'year'){
-    // 12 barras (una por mes)
-    for(let m=0;m<12;m++){
-      const d = new Date(from.getFullYear(), m, 1);
-      const iso = `${from.getFullYear()}-${String(m+1).padStart(2,'0')}`;
-      const lbl = d.toLocaleDateString('es-CO',{month:'short'}).toUpperCase();
-      buckets.push({isoMonth: iso, lbl, income:0, expense:0});
-    }
-    txs.forEach(t=>{
-      const b = buckets.find(b=>t.date.startsWith(b.isoMonth));
-      if(!b) return;
-      if(t.type==='income') b.income+=t.amt; else b.expense+=t.amt;
-    });
-    _renderMultiBucketBars(el, buckets);
-    return;
-  }
-
-  // Week: fill day buckets
-  if(period === 'week'){
-    txs.forEach(t=>{
-      const b = buckets.find(b=>b.iso===t.date);
-      if(!b) return;
-      if(t.type==='income') b.income+=t.amt; else b.expense+=t.amt;
-    });
-  }
-  _renderMultiBucketBars(el, buckets);
+// Ingresos por categoría (reemplaza el antiguo gráfico de barras vs gastos)
+function renderFinIncCatChart(txs){
+  const el = document.getElementById('finIncCatChart'); if(!el) return;
+  const catTotals = {};
+  txs.filter(t=>t.type==='income').forEach(t=>{ catTotals[t.cat]=(catTotals[t.cat]||0)+t.amt; });
+  const cats = Object.entries(catTotals).sort((a,b)=>b[1]-a[1]);
+  if(!cats.length){ el.innerHTML='<div class="fin-empty" style="padding:10px">Sin ingresos en este período.</div>'; return; }
+  const total = cats.reduce((s,[,v])=>s+v,0);
+  const maxC = cats[0][1];
+  el.innerHTML = cats.map(([cat,amt])=>{
+    const col = FIN_CAT_COLORS[cat]||'var(--green)';
+    // Ingresos: usar verde si la categoría no tiene color definido
+    const barCol = (cat==='income'||!FIN_CAT_COLORS[cat]) ? 'linear-gradient(90deg,#006633,#4ade80)' : col;
+    const pct = Math.round(amt/total*100);
+    return `<div class="fin-bar-row">
+      <div class="fin-bar-lbl" style="width:56px;font-size:calc(8px * var(--fs-scale));" title="${FIN_CAT_LABELS[cat]||cat}">${FIN_CAT_EMOJI[cat]||'💰'} ${(FIN_CAT_LABELS[cat]||cat).slice(0,5).toUpperCase()}</div>
+      <div class="fin-bar-track"><div style="height:100%;background:${barCol};width:${Math.round(amt/maxC*100)}%;transition:width .7s;"></div></div>
+      <div class="fin-bar-val" style="color:var(--green);width:68px;">${formatCOP(amt)} <span style="color:var(--muted);font-size:calc(7px * var(--fs-scale));">${pct}%</span></div>
+    </div>`;
+  }).join('');
 }
-
 function _renderMultiBucketBars(el, buckets){
   const maxVal = Math.max(...buckets.map(b=>Math.max(b.income,b.expense)), 1);
   el.innerHTML = buckets.map(b=>`
-    <div style="margin-bottom:7px;">
-      <div style="font-size:8px;color:var(--muted);letter-spacing:1px;margin-bottom:3px;">${b.lbl}</div>
-      ${b.income>0?`<div class="fin-bar-row" style="margin-bottom:3px;">
-        <div style="font-size:8px;color:var(--green);width:22px;flex-shrink:0;">ING</div>
+    <div style="margin-bottom:10px;">
+      <div style="font-size:calc(9px * var(--fs-scale));color:var(--blue);letter-spacing:2px;margin-bottom:4px;font-family:'Orbitron',monospace;">${b.lbl}</div>
+      ${b.income>0?`<div class="fin-bar-row" style="margin-bottom:4px;">
+        <div style="font-size:calc(8px * var(--fs-scale));color:var(--green);width:28px;flex-shrink:0;text-align:right;letter-spacing:1px;">ING</div>
         <div class="fin-bar-track"><div class="fin-bar-fill-inc" style="width:${Math.round(b.income/maxVal*100)}%"></div></div>
-        <div class="fin-bar-val" style="color:var(--green);">${formatCOP(b.income)}</div>
+        <div class="fin-bar-val" style="color:var(--green);font-size:calc(9px * var(--fs-scale));width:64px;">${formatCOP(b.income)}</div>
       </div>`:''}
       ${b.expense>0?`<div class="fin-bar-row">
-        <div style="font-size:8px;color:var(--danger);width:22px;flex-shrink:0;">GAS</div>
+        <div style="font-size:calc(8px * var(--fs-scale));color:var(--danger);width:28px;flex-shrink:0;text-align:right;letter-spacing:1px;">GAS</div>
         <div class="fin-bar-track"><div class="fin-bar-fill-exp" style="width:${Math.round(b.expense/maxVal*100)}%"></div></div>
-        <div class="fin-bar-val" style="color:var(--danger);">${formatCOP(b.expense)}</div>
+        <div class="fin-bar-val" style="color:var(--danger);font-size:calc(9px * var(--fs-scale));width:64px;">${formatCOP(b.expense)}</div>
       </div>`:''}
-      ${b.income===0&&b.expense===0?`<div style="font-size:9px;color:rgba(96,130,180,0.3);padding-left:26px;letter-spacing:1px;">SIN MOV.</div>`:''}
+      ${b.income===0&&b.expense===0?`<div style="font-size:calc(8px * var(--fs-scale));color:rgba(96,130,180,0.3);padding-left:36px;letter-spacing:1px;">SIN MOV.</div>`:''}
     </div>`).join('');
 }
 
@@ -334,7 +278,7 @@ function renderFinTab(){
     balEl.style.color = balance<0?'var(--danger)':balance>0?'var(--green)':'var(--bright)';
   }
 
-  renderFinChartBars(txs, finPeriod, finOffset);
+  renderFinIncCatChart(txs);
   renderFinCatChart(txs);
   renderFinTxList(txs);
 }

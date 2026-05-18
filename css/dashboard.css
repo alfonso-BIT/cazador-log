@@ -50,6 +50,9 @@
 .act-btn.cancel{color:var(--muted);border-color:rgba(96,130,180,.25);}
 .act-btn.swap{color:rgba(191,95,255,.8);border-color:rgba(191,95,255,.35);font-size:12px;padding:2px 6px;}
 .act-btn.swap:hover{color:var(--neon-purple);border-color:var(--neon-purple-border);background:var(--neon-purple-dim);box-shadow:0 0 8px var(--neon-purple-glow);}
+.act-btn.fav{color:rgba(240,192,64,.4);border-color:rgba(240,192,64,.15);font-size:13px;padding:1px 6px;}
+.act-btn.fav:hover{color:var(--gold);border-color:rgba(240,192,64,.5);background:rgba(240,192,64,.08);}
+.act-btn.fav.fav-on{color:var(--gold);border-color:rgba(240,192,64,.5);background:rgba(240,192,64,.1);text-shadow:0 0 6px rgba(240,192,64,.6);}
 .fixed-badge{font-size:8px;letter-spacing:2px;color:var(--gold);background:rgba(240,192,64,0.1);border:1px solid rgba(240,192,64,0.3);padding:1px 5px;font-family:'Orbitron',monospace;}
 .progtxt{font-size:11px;color:var(--muted);text-align:right;margin-top:4px;}
 

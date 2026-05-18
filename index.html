@@ -243,6 +243,10 @@
             <option value="weekly">📆 Semanal</option>
             <option value="monthly">🗓️ Mensual</option>
           </select>
+          <select class="ie-sel" id="questFavFilter" onchange="renderAllQuests()" style="padding:8px 10px;background:rgba(0,20,50,0.85);border:1px solid rgba(0,100,200,0.28);color:var(--bright);font-family:'Rajdhani',sans-serif;font-size:calc(13px * var(--fs-scale));outline:none;">
+            <option value="">★ Todas</option>
+            <option value="fav">★ Favoritas</option>
+          </select>
         </div>
         <div id="allQuestList"></div>
       </div>
@@ -297,7 +301,10 @@
         <div style="font-family:'Orbitron',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:3px;">◈ XP DE TIENDA DISPONIBLE</div>
         <div style="font-family:'Orbitron',monospace;font-size:20px;font-weight:700;color:var(--gold);" id="shopXPDisplay">0</div>
       </div>
-      <div style="text-align:right;font-size:10px;color:var(--muted);line-height:1.7;max-width:160px;">XP de nivel: <span style="color:var(--bright);font-family:'Orbitron',monospace;" id="shopTotalXPDisplay">0</span><br><span style="font-size:9px;color:rgba(0,170,255,0.6);">El nivel no cambia al comprar</span></div>
+      <div style="text-align:right;line-height:1.8;max-width:180px;">
+        <div style="font-size:calc(10px * var(--fs-scale));color:var(--muted);">XP de nivel: <span style="color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(12px * var(--fs-scale));" id="shopTotalXPDisplay">0</span></div>
+        <div style="font-size:calc(9px * var(--fs-scale));color:rgba(0,170,255,0.7);letter-spacing:0.5px;">El nivel no cambia al comprar</div>
+      </div>
     </div>
     <!-- Selector de periodo global para la tienda -->
     <div style="display:flex;gap:0;margin-bottom:14px;border:1px solid rgba(0,170,255,0.25);">
@@ -522,56 +529,24 @@
       <button class="fabtn gold" style="margin-top:8px;" onclick="saveMinBalance()"><span class="txt-short">✓ GUARDAR TOPE</span><span class="txt-full">GUARDAR TOPE MÍNIMO</span></button>
     </div>
 
-    <div class="shdr"><div class="sline"></div><span class="stitle">◈ AÑADIR LOGRO PERSONALIZADO</span><div class="sline"></div></div>
+    <div class="shdr"><div class="sline"></div><span class="stitle">◈ LOGROS PERSONALIZADOS</span><div class="sline"></div></div>
     <div class="aform">
       <div class="tip-block">
         <span class="tip-base">Crea y edita tus logros con condiciones personalizadas.</span>
         <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿QUÉ SON LOS LOGROS?</button>
         <div class="tip-detail">Los logros son metas que se desbloquean automáticamente cuando cumples la condición (nivel, racha, XP total, misiones completadas…). Puedes elegir el ícono, nombre y descripción. Los cambios se reflejan en la pestaña <strong style="color:var(--blue)">PERFIL</strong>. El tipo "Manual" lo marcas tú mismo cuando lo logres.</div>
       </div>
-      <div class="frow">
-        <label class="flbl">Nombre del logro</label>
-        <input class="finput" id="aNameInp" placeholder="Ej: Primer nivel alcanzado">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
+        <input class="finput" id="aNameInp" placeholder="Nombre del logro..." style="flex:1;margin:0;">
+        <button class="fabtn gold" style="margin:0;white-space:nowrap;flex-shrink:0;" onclick="addAchiev()">+ AÑADIR</button>
       </div>
-      <div class="frow">
-        <label class="flbl">Descripción</label>
-        <input class="finput" id="aDescInp" placeholder="Ej: Alcanza el nivel 1">
-      </div>
-      <div class="fgrid">
-        <div class="frow" style="margin-bottom:0">
-          <label class="flbl">Emoji / Ícono</label>
-          <div class="ep-wrap" id="ep-achiev-new-wrap">
-            <div class="ep-trigger-row">
-              <input class="finput" id="aIcoInp" placeholder="🏆" style="font-size:22px;text-align:center" maxlength="4">
-              <button class="ep-open-btn" type="button" onclick="epToggle('ep-achiev-new')">😀 ELEGIR</button>
-            </div>
-            <div class="ep-panel" id="ep-achiev-new">
-              <input class="ep-search" placeholder="🔍 Buscar emoji..." oninput="epSearch(this,'ep-achiev-new')" autocomplete="off">
-              <div class="ep-cats" id="ep-achiev-new-cats"></div>
-              <div class="ep-grid" id="ep-achiev-new-grid"></div>
-            </div>
-          </div>
-        </div>
-        <div class="frow" style="margin-bottom:0">
-          <label class="flbl">Condición</label>
-          <select class="fselect" id="aTypeInp" onchange="aTypeChange(this.value)">
-            <option value="totalComp">Total misiones</option>
-            <option value="streak">Racha días</option>
-            <option value="level">Nivel</option>
-            <option value="totalXP">XP total</option>
-            <option value="catMax">Cat. dominante</option>
-            <option value="redeem">Canjes</option>
-            <option value="custom">Manual</option>
-          </select>
-        </div>
-      </div>
-      <div class="frow" id="aTargetRow" style="margin-top:10px">
-        <label class="flbl">Meta (número a alcanzar)</label>
-        <input type="number" class="finput" id="aTargetInp" placeholder="Ej: 10" min="1" value="10">
-      </div>
-      <button class="fabtn gold" style="margin-top:10px" onclick="addAchiev()">+ AÑADIR LOGRO</button>
-      <button class="fabtn" style="margin-top:6px;" onclick="S.achievements=defaultAchievements();save();notif('LOGROS RESTAURADOS');">↺ RESTAURAR LOGROS ORIGINALES</button>
-      <div id="achievEditor" style="margin-top:12px;"></div>
+      <!-- campos ocultos con defaults — addAchiev() los lee -->
+      <input type="hidden" id="aDescInp" value="">
+      <input type="hidden" id="aIcoInp" value="⭐">
+      <input type="hidden" id="aTypeInp" value="custom">
+      <input type="hidden" id="aTargetInp" value="1">
+      <button class="fabtn" style="margin-bottom:10px;width:100%;" onclick="S.achievements=defaultAchievements();save();renderAchievEditor();notif('LOGROS RESTAURADOS');">↺ RESTAURAR LOGROS ORIGINALES</button>
+      <div id="achievEditor" style="margin-top:4px;"></div>
     </div>
 
 
@@ -651,8 +626,8 @@
 
     <!-- Bar chart by day -->
     <div class="fin-chart-wrap">
-      <div class="fin-chart-title">◈ GASTOS VS INGRESOS</div>
-      <div id="finChartBars"></div>
+      <div class="fin-chart-title">◈ INGRESOS POR CATEGORÍA</div>
+      <div id="finIncCatChart"></div>
     </div>
 
     <!-- Category breakdown chart -->

@@ -1037,3 +1037,14 @@ function toggleVisionBoardField(cat){
   const row = document.getElementById('visionBoardRow');
   if(row) row.style.display = (cat === 'visionboard') ? 'flex' : 'none';
 }
+
+// ── toggleFavorite — marca/desmarca misión como favorita ──
+function toggleFavorite(id, event){
+  if(event){ event.stopPropagation(); }
+  const m = S.missions.find(m=>m.id===id);
+  if(!m) return;
+  m.favorite = !m.favorite;
+  save();
+  renderAllQuests();
+  renderDailyMissions();
+}

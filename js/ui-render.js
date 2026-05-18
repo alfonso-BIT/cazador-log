@@ -256,6 +256,7 @@ function renderMissionCard(m, fromDaily){
         ${m.fixed?'<span class="fixed-badge">FIJA</span>':''}
         ${m.visionImg?`<span style="font-size:calc(9px * var(--fs-scale));padding:2px 5px;border-radius:3px;background:rgba(167,139,250,0.2);color:#c4b5fd;letter-spacing:1px;">🖼️ ${escH(m.visionImg.replace(/\.png$/i,''))}</span>`:''}
         <div class="mactions">
+          <button class="act-btn fav${m.favorite?' fav-on':''}" onclick="toggleFavorite('${m.id}',event)" title="${m.favorite?'Quitar de favoritas':'Marcar como favorita'}">${m.favorite?'★':'☆'}</button>
           <button class="act-btn edit" onclick="startEditMission('${m.id}',event)">✏</button>
           ${fromDaily
             ? `<button class="act-btn swap" onclick="swapDailyMission('${m.id}',event)" title="🔀 Cambiar por otra misión del banco (aleatoria)">🔀</button>`
@@ -337,11 +338,15 @@ function renderAllQuests(){
   const q=(document.getElementById('questSearch')||{}).value||'';
   const cat=(document.getElementById('questCatFilter')||{}).value||'';
   const freq=(document.getElementById('questFreqFilter')||{}).value||'';
+  const fav=(document.getElementById('questFavFilter')||{}).value||'';
+  const norm=s=>s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+  const qn=norm(q);
   let list=S.missions.filter(m=>{
-    const matchQ=!q||m.name.toLowerCase().includes(q.toLowerCase())||((m.desc||'').toLowerCase().includes(q.toLowerCase()));
+    const matchQ=!q||norm(m.name).includes(qn)||norm(m.desc||'').includes(qn)||norm(m.cat||'').includes(qn);
     const matchC=!cat||m.cat===cat;
     const matchF=!freq||(m.freq||'daily')===freq;
-    return matchQ&&matchC&&matchF;
+    const matchFav=!fav||!!m.favorite;
+    return matchQ&&matchC&&matchF&&matchFav;
   });
   if(!list.length){
     el.innerHTML='<div style="text-align:center;color:var(--muted);padding:28px;font-size:calc(12px * var(--fs-scale));letter-spacing:2px;">SIN RESULTADOS</div>';

@@ -210,9 +210,10 @@ function addAchiev(){
   });
   document.getElementById('aNameInp').value='';
   document.getElementById('aDescInp').value='';
-  document.getElementById('aIcoInp').value='';
-  document.getElementById('aTargetInp').value='10';
+  document.getElementById('aIcoInp').value='⭐';
+  document.getElementById('aTargetInp').value='1';
   save();
+  renderAchievEditor();
   notif('▸ LOGRO AÑADIDO: '+n);
 }
 
