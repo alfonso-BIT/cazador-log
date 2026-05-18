@@ -50,10 +50,16 @@ function render(){
   updateMinBalStatus();
   updateResetUI();
   updateClassUI();
-  // ── Misiones siempre (tab por defecto, datos críticos) ──
-  renderDailyMissions();
-  renderWeeklyMission();
-  renderMonthlyMission();
+  // ── Misiones: solo cuando el tab activo las muestra ──────────────────────
+  // renderDailyMissions/Weekly/Monthly escriben en elementos del tab missions.
+  // Llamarlos en cada renderWithFlash() desde shop/dinero/biblioteca es trabajo
+  // innecesario. Los elementos existen en el DOM, pero no están visibles.
+  const activeTab = S.activeTab || 'missions';
+  if(activeTab === 'missions' || activeTab === 'allquests'){
+    renderDailyMissions();
+    renderWeeklyMission();
+    renderMonthlyMission();
+  }
   // ── Renders condicionales por tab activo ──
   const activeTab = S.activeTab || 'missions';
   if(activeTab === 'missions')   renderAllQuests();
@@ -119,15 +125,16 @@ function renderWeeklyMission(){
   const sec = document.getElementById('weekly-section');
   if(!el || !sec) return;
   const m = getWeeklyMission();
-  if(!m){
+  const done = !!m?.weeklyDone;
+  const claimed = !!S.weeklyClaimed;
+  // Ocultar sección si no hay misión O si ya fue completada Y el bonus ya fue reclamado
+  if(!m || (done && claimed)){
     sec.style.display = 'none';
     return;
   }
   sec.style.display = '';
   const xp = XPR[m.rank] || 10;
   const ico = CAT_LABELS[m.cat]||'⚡';
-  const done = !!m.weeklyDone;
-  const claimed = !!S.weeklyClaimed;
   const mult = S.streak > 0 ? 1.0 : 0.5;
   const bonus = Math.floor(xp * mult);
   const multLbl = S.streak > 0 ? '🔥 x1.0 racha' : 'x0.5 sin racha';
@@ -152,7 +159,7 @@ function renderWeeklyMission(){
         <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(251,191,36,0.6);color:#fff;letter-spacing:1px;font-family:'Orbitron',monospace;">📆 Semanal</span>
         <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(30,30,60,0.7);color:${S.streak>0?'#fbbf24':'#94a3b8'};letter-spacing:1px;font-family:'Orbitron',monospace;" title="Bonus al reclamar">BONUS ${multLbl}</span>
         <div class="mactions">
-          <button class="act-btn swap" onclick="swapWeeklyMission(event)" title="🔀 Cambiar misión semanal">🔀</button>
+          ${done ? '' : '<button class="act-btn swap" onclick="swapWeeklyMission(event)" title=\"🔀 Cambiar misión semanal\">🔀</button>'}
         </div>
       </div>
     </div>
@@ -165,15 +172,16 @@ function renderMonthlyMission(){
   const sec = document.getElementById('monthly-section');
   if(!el || !sec) return;
   const m = getMonthlyMission();
-  if(!m){
+  const done = !!m?.monthlyDone;
+  const claimed = !!S.monthlyClaimed;
+  // Ocultar sección si no hay misión O si ya fue completada Y el bonus ya fue reclamado
+  if(!m || (done && claimed)){
     sec.style.display = 'none';
     return;
   }
   sec.style.display = '';
   const xp = XPR[m.rank] || 10;
   const ico = CAT_LABELS[m.cat]||'⚡';
-  const done = !!m.monthlyDone;
-  const claimed = !!S.monthlyClaimed;
   const mult = S.streak > 0 ? 1.0 : 0.5;
   const bonus = Math.floor(xp * mult);
   const multLbl = S.streak > 0 ? '🔥 x1.0 racha' : 'x0.5 sin racha';
@@ -198,7 +206,7 @@ function renderMonthlyMission(){
         <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(167,139,250,0.6);color:#fff;letter-spacing:1px;font-family:'Orbitron',monospace;">🗓️ Mensual</span>
         <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(30,30,60,0.7);color:${S.streak>0?'#fbbf24':'#94a3b8'};letter-spacing:1px;font-family:'Orbitron',monospace;" title="Bonus al reclamar">BONUS ${multLbl}</span>
         <div class="mactions">
-          <button class="act-btn swap" onclick="swapMonthlyMission(event)" title="🔀 Cambiar misión mensual">🔀</button>
+          ${done ? '' : '<button class="act-btn swap" onclick="swapMonthlyMission(event)" title=\"🔀 Cambiar misión mensual\">🔀</button>'}
         </div>
       </div>
     </div>

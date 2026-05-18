@@ -1,8 +1,7 @@
 // ╔══════════════════════════════════════════════════════════════════════════╗
-// ║  ui-backup.js — §19 BACKUP · §02-B GIST SYNC UI                         ║
+// ║  ui-backup.js — §19 BACKUP                                              ║
 // ║  JSON : exportar/importar estado completo (migrar dispositivo)           ║
 // ║  XLSX : resumen legible multi-hoja (SheetJS requerido)                   ║
-// ║  Gist : connect/disconnect/pull UI + toggleGistToken()                   ║
 // ╚══════════════════════════════════════════════════════════════════════════╝
 
 // ── JSON ──────────────────────────────────────────────
@@ -26,8 +25,21 @@ function importBackupJSON(input){
     try{
       const data=JSON.parse(e.target.result);
       if(!data.state||!data.user) throw new Error('formato inválido');
+      // FIX-QA-06: validar campos obligatorios antes de restaurar.
+      // Un backup malformado (sin missions[], lvl, etc.) podía dejar S en estado
+      // corrupto y romper el render. Ahora se exige al menos los campos críticos.
+      const st = data.state;
+      const requiredFields = ['lvl','totalXP','missions','items','achievements'];
+      const missing = requiredFields.filter(f => st[f] === undefined || st[f] === null);
+      if(missing.length){
+        notif('▸ BACKUP INCOMPLETO — FALTAN: ' + missing.join(', ').toUpperCase());
+        input.value=''; return;
+      }
+      if(!Array.isArray(st.missions)||!Array.isArray(st.items)||!Array.isArray(st.achievements)){
+        notif('▸ BACKUP CORRUPTO — ARRAYS INVÁLIDOS'); input.value=''; return;
+      }
       // Fusionar: campos críticos del backup sobre defaultState para evitar campos faltantes
-      const merged=Object.assign({},defaultState(),data.state);
+      const merged=Object.assign({},defaultState(),st);
       S=merged;
       save(); renderWithFlash();
       notif('⬆ BACKUP RESTAURADO — '+data.user.toUpperCase());
@@ -119,78 +131,7 @@ function exportBackupXLSX(){
   notif('📊 XLSX COMPLETO DESCARGADO — 5 HOJAS');
 }
 
-// renderDatosTab — llamado por switchTab; actualiza stats en la página
+// renderDatosTab — llamado por switchTab al activar el tab Datos
 function renderDatosTab(){
-  renderGistSection();
-}
-
-// ── §02-B GIST SYNC UI ────────────────────────────────────────────────────
-// renderGistSection — inyecta el estado actual en la sección del tab Datos
-function renderGistSection(){
-  const cfg = gistGetCfg();
-  const statusEl = document.getElementById('gistStatus');
-  const btnDisconnect = document.getElementById('gistBtnDisconnect');
-  const btnPull = document.getElementById('gistBtnPull');
-  const formEl = document.getElementById('gistForm');
-  const connectedEl = document.getElementById('gistConnected');
-  if(!statusEl) return;
-
-  if(cfg?.token && cfg?.gistId){
-    if(formEl)      formEl.style.display      = 'none';
-    if(connectedEl) connectedEl.style.display = 'block';
-    statusEl.textContent = '● CONECTADO';
-    statusEl.style.color = '#4ade80';
-  } else {
-    if(formEl)      formEl.style.display      = 'block';
-    if(connectedEl) connectedEl.style.display = 'none';
-    statusEl.textContent = '○ SIN CONFIGURAR';
-    statusEl.style.color = 'var(--muted)';
-  }
-}
-
-// gistConnect — valida y guarda token+gistId
-async function gistConnect(){
-  const token  = document.getElementById('gistToken')?.value?.trim();
-  const gistId = document.getElementById('gistId')?.value?.trim();
-  const btn    = document.getElementById('gistBtnConnect');
-  if(!token || !gistId){ notif('▸ COMPLETA TOKEN Y GIST ID'); return; }
-  if(btn){ btn.textContent = '⏳ VERIFICANDO…'; btn.disabled = true; }
-  const result = await gistVerify(token, gistId);
-  if(btn){ btn.textContent = '✓ CONECTAR'; btn.disabled = false; }
-  if(!result.ok){ notif('▸ ERROR: ' + result.error.toUpperCase()); return; }
-  gistSaveCfg({ token, gistId });
-  renderGistSection();
-  notif('☁ GIST CONECTADO — AUTO-SYNC ACTIVO');
-}
-
-// gistDisconnect — borra config local (no borra el gist)
-function gistDisconnect(){
-  gistClearCfg();
-  renderGistSection();
-  notif('○ GIST DESCONECTADO');
-}
-
-// gistPullNow — descarga datos del gist y recarga la app
-async function gistPullNow(){
-  const btn = document.getElementById('gistBtnPull');
-  if(btn){ btn.textContent = '⏳ DESCARGANDO…'; btn.disabled = true; }
-  const ok = await gistPull();
-  if(btn){ btn.textContent = '⬇ TRAER DATOS'; btn.disabled = false; }
-  if(ok){
-    S = loadState(currentUser);
-    renderWithFlash();
-    notif('⬇ DATOS RESTAURADOS DESDE GIST');
-  } else {
-    notif('▸ SIN DATOS EN EL GIST PARA ESTE USUARIO');
-  }
-}
-
-// ── toggleGistToken — alterna visibilidad del campo token (ojo) ───────────
-function toggleGistToken(){
-  const inp = document.getElementById('gistToken');
-  const btn = document.getElementById('gistTokenToggle');
-  if(!inp || !btn) return;
-  const hidden = inp.type === 'password';
-  inp.type        = hidden ? 'text' : 'password';
-  btn.textContent = hidden ? '●' : '○';
+  // Hook para actualizaciones futuras en el tab Datos
 }

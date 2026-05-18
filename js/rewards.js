@@ -96,6 +96,7 @@ function detectClass(){
 }
 
 let _lastAvatarCat = null; // Para detectar cambio de categoría dominante
+let _avatarCatInitialized = false; // FIX-BUG-AVATARCAT: evita notif espuria en el primer render tras recarga
 
 
 function renderAchievements(){
@@ -108,6 +109,11 @@ function renderAchievements(){
     const done = evalAchievement(a);
     const prog = getAchievProgress(a);
     const pct = a.type==='custom' ? (done?100:0) : Math.min(100,Math.round((prog.cur/prog.max)*100));
+    // FIX-BUG-CUSTOM: los logros manuales tienen badge clicable para marcar/desmarcar.
+    // Los automáticos conservan su badge de solo lectura (comportamiento original).
+    const badgeHtml = a.type==='custom'
+      ? `<div class="achiev-badge ${done?'done':'pend'}" style="cursor:pointer;user-select:none;" title="Clic para marcar/desmarcar" onclick="toggleCustomAchiev('${escH(a.id)}')">${done?'✓ LOGRADO':'● MARCAR'}</div>`
+      : `<div class="achiev-badge ${done?'done':'pend'}">${done?'✓ LOGRADO':'PENDIENTE'}</div>`;
     return `<div class="achiev-row">
       <div class="achiev-ico">${a.ico||'⭐'}</div>
       <div class="achiev-txt">
@@ -115,9 +121,21 @@ function renderAchievements(){
         <div class="achiev-desc">${escH(a.desc)}</div>
         ${a.type!=='custom'?`<div style="margin-top:4px;height:3px;background:rgba(0,100,200,0.12);border:1px solid rgba(0,100,200,0.15);"><div style="height:100%;width:${pct}%;background:${done?'var(--gold)':'var(--blue)'};transition:width .6s;"></div></div><div style="font-size:9px;color:var(--muted);text-align:right;margin-top:2px;">${prog.cur} / ${prog.max}</div>`:'' }
       </div>
-      <div class="achiev-badge ${done?'done':'pend'}">${done?'✓ LOGRADO':'PENDIENTE'}</div>
+      ${badgeHtml}
     </div>`;
   }).join('');
+}
+
+// FIX-BUG-CUSTOM: toggle manual para logros de tipo 'custom'.
+// Invierte a.customDone y guarda. evalAchievement() lo lee con !!a.customDone.
+function toggleCustomAchiev(id){
+  if(!S.achievements) return;
+  const a = S.achievements.find(x=>x.id===id);
+  if(!a || a.type!=='custom') return;
+  a.customDone = !a.customDone;
+  save();
+  renderAchievements();
+  notif(a.customDone ? '✓ LOGRO MARCADO: '+a.name : '○ LOGRO DESMARCADO: '+a.name);
 }
 
 // ─── EDITOR DE LOGROS EN CONFIGURACIÓN ───

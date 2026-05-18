@@ -183,7 +183,13 @@ function getLibAchievProgress(a){
 
 // ── Ritmo de lectura ──────────────────────────────────────────────────────
 // Calcula páginas/día promedio de los últimos 30 días basándose en progreso
-// guardado. Usa S.readingLog = [{date:'YYYY-MM-DD', pages:N}]
+// guardado.
+// NOTA: S.readingLog = [{date:'YYYY-MM-DD', pages:N}] está reservado para un
+// futuro registro diario de páginas leídas, pero actualmente NO se puebla
+// desde ningún módulo. Esta función deriva el ritmo a partir de S.books
+// (finishedAt + pages de libros terminados), no de readingLog.
+// No eliminar readingLog del estado: está en defaultState() para cuando
+// se implemente el registro diario.
 function libReadingPace(){
   if(!S.books) return null;
   // Suma páginas de libros terminados con finishedAt en últimos 30 días

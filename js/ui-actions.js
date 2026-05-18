@@ -59,9 +59,10 @@ function logDailyMission(cat, xp, add){
     entry.missions=Math.max(0,(entry.missions||0)-1);
   }
   // Limit log to last 35 days to save space
+  const _now35 = new Date();
   S.dailyLog = S.dailyLog.filter(e=>{
-    const d=new Date(e.date); const now=new Date();
-    return (now-d)/(1000*60*60*24)<=35;
+    const d=new Date(e.date);
+    return (_now35-d)/(1000*60*60*24)<=35;
   });
 }
 
@@ -131,12 +132,34 @@ function delMission(id,e){
   }
 }
 
+// FIX-QA-01: mutex de reclamación diaria.
+// Problema: en dos pestañas del mismo navegador (localStorage compartido)
+// ambas podían leer claimed=false antes de que la primera escribiera,
+// otorgando el bonus dos veces.
+// Solución: re-leer claimed desde localStorage justo antes de actuar;
+// si ya fue reclamado en otra pestaña, abortar silenciosamente.
+let _claimingDaily = false;
 function claimDaily(){
+  if(_claimingDaily) return;           // re-entrada: botón pulsado dos veces rápido
   const daily=getDailyMissions();
   if(S.claimed||!daily.every(m=>m.done)) return;
+  // Re-leer desde localStorage para detectar reclamo en otra pestaña del mismo navegador
+  try{
+    const fresh=JSON.parse(localStorage.getItem(getUserKey(currentUser))||'null');
+    if(fresh&&fresh.claimed){
+      S.claimed=true;
+      if(fresh.claimedDate) S.claimedDate=fresh.claimedDate;
+      renderWithFlash(); return;
+    }
+  }catch(e){}
+  _claimingDaily=true;
   const bonus=Math.floor(60*(1+S.streak*0.12));
-  gainXP(bonus); S.claimed=true; save(); renderWithFlash();
+  // FIX-BUG-CLAIM: guardar también la clave del día en que se reclamó.
+  // Así checkReset() puede distinguir si claimed=true pertenece al día actual
+  // o a un día anterior, evitando que un reload o merge borre el estado.
+  gainXP(bonus); S.claimed=true; S.claimedDate=getTodayKey(); save(); renderWithFlash();
   notif('◈ RECOMPENSA DIARIA: +'+bonus+' XP BONUS ◈');
+  _claimingDaily=false;
 }
 
 function toggleWeekly(missionId){
@@ -168,15 +191,24 @@ function toggleWeekly(missionId){
   save(); renderWithFlash();
 }
 
+let _claimingWeekly = false;
 function claimWeekly(){
+  if(_claimingWeekly) return;
   const m = getWeeklyMission();
   if(S.weeklyClaimed || !m || !m.weeklyDone) return;
+  // Re-leer localStorage para detectar reclamo en otra pestaña
+  try{
+    const fresh=JSON.parse(localStorage.getItem(getUserKey(currentUser))||'null');
+    if(fresh&&fresh.weeklyClaimed){ S.weeklyClaimed=true; renderWithFlash(); return; }
+  }catch(e){}
+  _claimingWeekly = true;
   const mxp = m.xp || XPR[m.rank] || 10;
   const multiplier = S.streak > 0 ? 1.0 : 0.5;
   const bonus = Math.floor(mxp * multiplier);
   gainXP(bonus); S.weeklyClaimed = true; save(); renderWithFlash();
   const tag = S.streak > 0 ? '🔥 RACHA x1.0' : 'x0.5';
   notif('◈ RECOMPENSA SEMANAL: +'+bonus+' XP BONUS ['+tag+'] ◈');
+  _claimingWeekly = false;
 }
 
 function toggleMonthly(missionId){
@@ -208,15 +240,24 @@ function toggleMonthly(missionId){
   save(); renderWithFlash();
 }
 
+let _claimingMonthly = false;
 function claimMonthly(){
+  if(_claimingMonthly) return;
   const m = getMonthlyMission();
   if(S.monthlyClaimed || !m || !m.monthlyDone) return;
+  // Re-leer localStorage para detectar reclamo en otra pestaña
+  try{
+    const fresh=JSON.parse(localStorage.getItem(getUserKey(currentUser))||'null');
+    if(fresh&&fresh.monthlyClaimed){ S.monthlyClaimed=true; renderWithFlash(); return; }
+  }catch(e){}
+  _claimingMonthly = true;
   const mxp = m.xp || XPR[m.rank] || 10;
   const multiplier = S.streak > 0 ? 1.0 : 0.5;
   const bonus = Math.floor(mxp * multiplier);
   gainXP(bonus); S.monthlyClaimed = true; save(); renderWithFlash();
   const tag = S.streak > 0 ? '🔥 RACHA x1.0' : 'x0.5';
   notif('◈ RECOMPENSA MENSUAL: +'+bonus+' XP BONUS ['+tag+'] ◈');
+  _claimingMonthly = false;
 }
 
 function swapWeeklyMission(e){
@@ -226,7 +267,9 @@ function swapWeeklyMission(e){
   const currentId = S.weeklyAssigned?.id;
   const pool = S.missions.filter(m => m.freq === 'weekly' && m.id !== currentId);
   if(!pool.length){ notif('⚠ NO HAY OTRAS MISIONES SEMANALES EN EL BANCO'); return; }
-  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const shuffledW = pool.slice();
+  for(let i=shuffledW.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffledW[i],shuffledW[j]]=[shuffledW[j],shuffledW[i]]; }
+  const pick = shuffledW[0];
   S.weeklyAssigned = { key: getWeekKey(), id: pick.id };
   save(); renderWithFlash();
   notif('🔀 MISIÓN SEMANAL CAMBIADA: '+pick.name);
@@ -239,7 +282,9 @@ function swapMonthlyMission(e){
   const currentId = S.monthlyAssigned?.id;
   const pool = S.missions.filter(m => m.freq === 'monthly' && m.id !== currentId);
   if(!pool.length){ notif('⚠ NO HAY OTRAS MISIONES MENSUALES EN EL BANCO'); return; }
-  const pick = pool[Math.floor(Math.random() * pool.length)];
+  const shuffledM = pool.slice();
+  for(let i=shuffledM.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [shuffledM[i],shuffledM[j]]=[shuffledM[j],shuffledM[i]]; }
+  const pick = shuffledM[0];
   S.monthlyAssigned = { key: getMonthKey(), id: pick.id };
   save(); renderWithFlash();
   notif('🔀 MISIÓN MENSUAL CAMBIADA: '+pick.name);
@@ -479,7 +524,7 @@ function openRedeem(id){
       <div style="color:var(--muted);letter-spacing:1px;font-size:9px;font-family:'Orbitron',monospace;margin-bottom:4px;">◈ COLCHÓN DE SEGURIDAD</div>
       <div>Balance actual: <span style="color:${totalBal>=0?'var(--green)':'var(--danger)'};font-family:'Orbitron',monospace;">${formatCOP(totalBal)}</span></div>
       <div>Tope mínimo: <span style="color:var(--gold);font-family:'Orbitron',monospace;">${formatCOP(minBal)}</span></div>
-      ${itemPrice>0?`<div>Balance tras compra: <span style="color:${afterBuy>=minBal?'var(--green)':'var(--danger)'};;font-family:'Orbitron',monospace;">${formatCOP(afterBuy)}</span></div>`:''}
+      ${itemPrice>0?`<div>Balance tras compra: <span style="color:${afterBuy>=minBal?'var(--green)':'var(--danger)'};font-family:'Orbitron',monospace;">${formatCOP(afterBuy)}</span></div>`:''}
     </div>`;
   }
 
@@ -519,10 +564,24 @@ function confirmRedeem(){
   if(minBal > 0 && totalBal <= minBal){ notif('⚠ BALANCE EN EL TOPE MÍNIMO — COMPRA BLOQUEADA'); closeModal(); return; }
   if(minBal > 0 && itemPrice > 0 && (totalBal - itemPrice) < minBal){ notif('⚠ ESTA COMPRA VIOLARÍA EL COLCHÓN DE SEGURIDAD'); closeModal(); return; }
 
+  // FIX-QA-02a: re-leer localStorage para detectar canje ya efectuado en otra
+  // pestaña o dispositivo antes de procesar. Evita doble canje del mismo ítem.
+  try{
+    const fresh=JSON.parse(localStorage.getItem(getUserKey(currentUser))||'null');
+    const freshIt=fresh&&fresh.items&&fresh.items.find(x=>x.id===pendingId);
+    if(freshIt&&freshIt.red){
+      notif('⚠ ESTE OBJETO YA FUE CANJEADO EN OTRO DISPOSITIVO');
+      // Sincronizar el estado local con el del storage para mostrar la tienda actualizada
+      Object.assign(it, freshIt);
+      save(); renderWithFlash(); closeModal(); return;
+    }
+  }catch(e){}
+
   // Descontar de shopXP ÚNICAMENTE — totalXP, lvl, curXP y nextXP no se tocan
   S.shopXP = Math.max(0, (S.shopXP||0) - it.cost);
   it.red = true;
   it.redDate = new Date().toLocaleDateString('es-CO',{year:'numeric',month:'2-digit',day:'2-digit'});
+  it.updatedAt  = Date.now();
 
   // ── Registrar gasto automático en módulo Dinero ──────────────────
   // Solo si el objeto tiene precio real en COP (it.realPrice > 0).
@@ -690,7 +749,8 @@ function addItem(){
     ico:document.getElementById('iIcoInp').value.trim()||'🎁',
     cost:c, price:priceRaw, realPrice:priceNum,
     rar:document.getElementById('iRarInp').value, red:false,
-    createdDate:new Date().toLocaleDateString('es-CO',{year:'numeric',month:'2-digit',day:'2-digit'})
+    createdDate:new Date().toLocaleDateString('es-CO',{year:'numeric',month:'2-digit',day:'2-digit'}),
+    updatedAt: Date.now()
   };
   S.items.push(it);
   document.getElementById('iNameInp').value='';
@@ -755,7 +815,7 @@ function updateMinBalStatus(){
   const free = totalBal - minBal;
   el.style.display='block';
   el.innerHTML = `<span style="color:var(--muted);font-size:calc(9px * var(--fs-scale));letter-spacing:1px;">ESTADO ACTUAL — </span>`
-    +`Balance total: <span style="color:${totalBal>=0?'var(--green)':'var(--danger)'};;font-family:'Orbitron',monospace;">${formatCOP(totalBal)}</span> &nbsp;|&nbsp; `
+    +`Balance total: <span style="color:${totalBal>=0?'var(--green)':'var(--danger)'};font-family:'Orbitron',monospace;">${formatCOP(totalBal)}</span> &nbsp;|&nbsp; `
     +`Tope mínimo: <span style="color:var(--gold);font-family:'Orbitron',monospace;">${formatCOP(minBal)}</span> &nbsp;|&nbsp; `
     +`Disponible para gastar: <span style="color:${free>0?'var(--blue)':'var(--danger)'};font-family:'Orbitron',monospace;">${formatCOP(Math.max(0,free))}</span>`
     +(free<=0?` <span style="color:var(--danger);margin-left:6px;font-size:calc(9px * var(--fs-scale));">⚠ BLOQUEADO</span>`:'');
@@ -773,6 +833,9 @@ function resetAll(){
     finCat = 'comida';
     editingMissionId = null;
     pendingId = null;
+    _claimingDaily   = false;
+    _claimingWeekly  = false;
+    _claimingMonthly = false;
     save();
     switchTab('missions');
     renderWithFlash();
@@ -794,139 +857,139 @@ function loadVisionBoardMissions(){
     // ║  👨‍👩‍👧  FAMILIA — Guardián del Hogar                           ║
     // ╚══════════════════════════════════════════════════════════════╝
     // — Diario: hábitos de convivencia y cuidado cotidiano —
-    { name:'Asear todo lo que usé hoy',               cat:'familia', rank:'D', freq:'daily',   fixed:false, visionImg:'familia',  desc:'Dejar cada cosa limpia y en su lugar. El orden es respeto.' },
-    { name:'Lavar mi ropa al quitármela',             cat:'familia', rank:'D', freq:'daily',   fixed:true,  visionImg:'familia',  desc:'Hábito de higiene inmediata. Sin acumulación, sin excusas.' },
-    { name:'Limpiar la zona de las mascotas',         cat:'familia', rank:'D', freq:'daily',   fixed:false, visionImg:'familia',  desc:'Cuidar a los perros también es cuidar el hogar.' },
-    { name:'Barrer la casa',                          cat:'familia', rank:'D', freq:'daily',   fixed:false, visionImg:'familia',  desc:'Pequeño acto, gran impacto en el ambiente familiar.' },
-    { name:'Tener una charla real en familia',        cat:'familia', rank:'C', freq:'daily',   fixed:true,  visionImg:'familia',  desc:'Conexión genuina, no solo convivencia. Pregunta, escucha, comparte.' },
-    { name:'Comer en compañía',                       cat:'familia', rank:'C', freq:'daily',   fixed:false, visionImg:'familia',  desc:'La mesa es el espacio sagrado del Guardián.' },
-    { name:'Invitar a paseo con las mascotas',        cat:'familia', rank:'C', freq:'daily',   fixed:false, visionImg:'familia',  desc:'Ejercicio, aire libre y vínculo. Triple victoria.' },
+    { name:'Asear todo lo que usé hoy',               cat:'familia', rank:'D', freq:'daily',   fixed:false, visionImg:'familia.png',  desc:'Dejar cada cosa limpia y en su lugar. El orden es respeto.' },
+    { name:'Lavar mi ropa al quitármela',             cat:'familia', rank:'D', freq:'daily',   fixed:true,  visionImg:'familia.png',  desc:'Hábito de higiene inmediata. Sin acumulación, sin excusas.' },
+    { name:'Limpiar la zona de las mascotas',         cat:'familia', rank:'D', freq:'daily',   fixed:false, visionImg:'familia.png',  desc:'Cuidar a los perros también es cuidar el hogar.' },
+    { name:'Barrer la casa',                          cat:'familia', rank:'D', freq:'daily',   fixed:false, visionImg:'familia.png',  desc:'Pequeño acto, gran impacto en el ambiente familiar.' },
+    { name:'Tener una charla real en familia',        cat:'familia', rank:'C', freq:'daily',   fixed:true,  visionImg:'familia.png',  desc:'Conexión genuina, no solo convivencia. Pregunta, escucha, comparte.' },
+    { name:'Comer en compañía',                       cat:'familia', rank:'C', freq:'daily',   fixed:false, visionImg:'familia.png',  desc:'La mesa es el espacio sagrado del Guardián.' },
+    { name:'Invitar a paseo con las mascotas',        cat:'familia', rank:'C', freq:'daily',   fixed:false, visionImg:'familia.png',  desc:'Ejercicio, aire libre y vínculo. Triple victoria.' },
     // — Semanal: rituales de cohesión familiar —
-    { name:'Cocinarles algo especial a la familia',   cat:'familia', rank:'B', freq:'weekly',  fixed:false, visionImg:'familia',  desc:'Cocinar para otros es un acto de amor concreto.' },
-    { name:'Ver una película en familia',             cat:'familia', rank:'B', freq:'weekly',  fixed:false, visionImg:'familia',  desc:'Tiempo de calidad sin pantallas individuales. Todos en el mismo canal.' },
-    { name:'Salir a caminar juntos',                  cat:'familia', rank:'B', freq:'weekly',  fixed:false, visionImg:'familia',  desc:'El movimiento compartido crea memorias.' },
-    { name:'Lavar el baño a fondo',                   cat:'familia', rank:'C', freq:'weekly',  fixed:false, visionImg:'familia',  desc:'El Guardián mantiene el hogar digno para todos.' },
-    { name:'Jugar un juego de mesa en familia',       cat:'familia', rank:'B', freq:'weekly',  fixed:false, visionImg:'familia',  desc:'Competencia sana, risas reales. Sin pantallas.' },
+    { name:'Cocinarles algo especial a la familia',   cat:'familia', rank:'B', freq:'weekly',  fixed:false, visionImg:'familia.png',  desc:'Cocinar para otros es un acto de amor concreto.' },
+    { name:'Ver una película en familia',             cat:'familia', rank:'B', freq:'weekly',  fixed:false, visionImg:'familia.png',  desc:'Tiempo de calidad sin pantallas individuales. Todos en el mismo canal.' },
+    { name:'Salir a caminar juntos',                  cat:'familia', rank:'B', freq:'weekly',  fixed:false, visionImg:'familia.png',  desc:'El movimiento compartido crea memorias.' },
+    { name:'Lavar el baño a fondo',                   cat:'familia', rank:'C', freq:'weekly',  fixed:false, visionImg:'familia.png',  desc:'El Guardián mantiene el hogar digno para todos.' },
+    { name:'Jugar un juego de mesa en familia',       cat:'familia', rank:'B', freq:'weekly',  fixed:false, visionImg:'familia.png',  desc:'Competencia sana, risas reales. Sin pantallas.' },
     // — Mensual: gestos que perduran —
-    { name:'Obsequiar algo a alguien de la familia',  cat:'familia', rank:'A', freq:'monthly', fixed:false, visionImg:'familia',  desc:'No tiene que ser grande. Solo tiene que ser pensado.' },
-    { name:'Asegurar insumos del plan familiar',      cat:'familia', rank:'B', freq:'monthly', fixed:true,  visionImg:'familia',  desc:'El Guardián anticipa. Nunca falta lo esencial.' },
+    { name:'Obsequiar algo a alguien de la familia',  cat:'familia', rank:'A', freq:'monthly', fixed:false, visionImg:'familia.png',  desc:'No tiene que ser grande. Solo tiene que ser pensado.' },
+    { name:'Asegurar insumos del plan familiar',      cat:'familia', rank:'B', freq:'monthly', fixed:true,  visionImg:'familia.png',  desc:'El Guardián anticipa. Nunca falta lo esencial.' },
 
     // ╔══════════════════════════════════════════════════════════════╗
     // ║  💼  TRABAJO — Maestro en Formación                          ║
     // ╚══════════════════════════════════════════════════════════════╝
     // — Diario personal (aprendizaje y productividad) —
-    { name:'Planear las actividades del día',          cat:'trabajo', rank:'C', freq:'daily',   fixed:true,  visionImg:'trabajo',  desc:'El Maestro no improvisa. Empieza el día con un mapa claro.' },
-    { name:'Dividir cada tarea en pasos concretos',    cat:'trabajo', rank:'C', freq:'daily',   fixed:false, visionImg:'trabajo',  desc:'Los grandes objetivos se comen de a poco. Divide y conquista.' },
-    { name:'Tomar notas de lo aprendido hoy',          cat:'trabajo', rank:'C', freq:'daily',   fixed:false, visionImg:'trabajo',  desc:'¿Qué aprendí? ¿Para qué sirve? ¿Cuándo lo uso? Escríbelo.' },
-    { name:'Mejorar los nombres de variables/funciones', cat:'trabajo', rank:'D', freq:'daily', fixed:false, visionImg:'trabajo',  desc:'El código limpio es código que respeta a quien lo lee después.' },
-    { name:'Tomar pausas cortas para no quemarte',     cat:'trabajo', rank:'D', freq:'daily',   fixed:false, visionImg:'trabajo',  desc:'La mente descansada rinde más. Pausa activa cada 90 min.' },
-    { name:'Explicar el tema del día sin fórmulas',    cat:'trabajo', rank:'B', freq:'daily',   fixed:false, visionImg:'trabajo',  desc:'Si no puedes explicarlo simple, no lo entiendes aún.' },
-    { name:'Mini reflexión al cerrar el día',          cat:'trabajo', rank:'D', freq:'daily',   fixed:true,  visionImg:'trabajo',  desc:'¿Qué salió bien? ¿Qué mejorar mañana? 3 minutos, máximo.' },
+    { name:'Planear las actividades del día',          cat:'trabajo', rank:'C', freq:'daily',   fixed:true,  visionImg:'trabajo.png',  desc:'El Maestro no improvisa. Empieza el día con un mapa claro.' },
+    { name:'Dividir cada tarea en pasos concretos',    cat:'trabajo', rank:'C', freq:'daily',   fixed:false, visionImg:'trabajo.png',  desc:'Los grandes objetivos se comen de a poco. Divide y conquista.' },
+    { name:'Tomar notas de lo aprendido hoy',          cat:'trabajo', rank:'C', freq:'daily',   fixed:false, visionImg:'trabajo.png',  desc:'¿Qué aprendí? ¿Para qué sirve? ¿Cuándo lo uso? Escríbelo.' },
+    { name:'Mejorar los nombres de variables/funciones', cat:'trabajo', rank:'D', freq:'daily', fixed:false, visionImg:'trabajo.png',  desc:'El código limpio es código que respeta a quien lo lee después.' },
+    { name:'Tomar pausas cortas para no quemarte',     cat:'trabajo', rank:'D', freq:'daily',   fixed:false, visionImg:'trabajo.png',  desc:'La mente descansada rinde más. Pausa activa cada 90 min.' },
+    { name:'Explicar el tema del día sin fórmulas',    cat:'trabajo', rank:'B', freq:'daily',   fixed:false, visionImg:'trabajo.png',  desc:'Si no puedes explicarlo simple, no lo entiendes aún.' },
+    { name:'Mini reflexión al cerrar el día',          cat:'trabajo', rank:'D', freq:'daily',   fixed:true,  visionImg:'trabajo.png',  desc:'¿Qué salió bien? ¿Qué mejorar mañana? 3 minutos, máximo.' },
     // — Diario clase (docencia) —
-    { name:'Resolver ejercicios de clase de varias formas', cat:'trabajo', rank:'B', freq:'daily', fixed:false, visionImg:'trabajo', desc:'Un buen Maestro muestra el camino, no solo la respuesta.' },
-    { name:'Dividir la clase en inicio, desarrollo y cierre', cat:'trabajo', rank:'C', freq:'daily', fixed:false, visionImg:'trabajo', desc:'Estructura que el estudiante siente aunque no la vea.' },
-    { name:'Celebrar un avance del estudiante hoy',    cat:'trabajo', rank:'C', freq:'daily',   fixed:false, visionImg:'trabajo',  desc:'El refuerzo positivo es la herramienta más poderosa del Maestro.' },
-    { name:'Marcar con sello el trabajo del día',      cat:'trabajo', rank:'D', freq:'daily',   fixed:false, visionImg:'trabajo',  desc:'El ritual de cierre formaliza el esfuerzo del estudiante.' },
+    { name:'Resolver ejercicios de clase de varias formas', cat:'trabajo', rank:'B', freq:'daily', fixed:false, visionImg:'trabajo.png', desc:'Un buen Maestro muestra el camino, no solo la respuesta.' },
+    { name:'Dividir la clase en inicio, desarrollo y cierre', cat:'trabajo', rank:'C', freq:'daily', fixed:false, visionImg:'trabajo.png', desc:'Estructura que el estudiante siente aunque no la vea.' },
+    { name:'Celebrar un avance del estudiante hoy',    cat:'trabajo', rank:'C', freq:'daily',   fixed:false, visionImg:'trabajo.png',  desc:'El refuerzo positivo es la herramienta más poderosa del Maestro.' },
+    { name:'Marcar con sello el trabajo del día',      cat:'trabajo', rank:'D', freq:'daily',   fixed:false, visionImg:'trabajo.png',  desc:'El ritual de cierre formaliza el esfuerzo del estudiante.' },
     // — Semanal —
-    { name:'Planeación semanal completa de trabajo',   cat:'trabajo', rank:'B', freq:'weekly',  fixed:true,  visionImg:'trabajo',  desc:'Sin plan semanal, la semana te controla a ti.' },
-    { name:'Diligenciar planeadores (bitácora + notas de clase)', cat:'trabajo', rank:'B', freq:'weekly', fixed:false, visionImg:'trabajo', desc:'El registro es la memoria del Maestro. Lo que no se escribe, se olvida.' },
-    { name:'Verificar y organizar material de apoyo',  cat:'trabajo', rank:'C', freq:'weekly',  fixed:false, visionImg:'trabajo',  desc:'Recursos listos = clases fluidas = estudiantes que avanzan.' },
-    { name:'Evaluación de temas estudiados esta semana', cat:'trabajo', rank:'A', freq:'weekly', fixed:false, visionImg:'trabajo', desc:'¿Realmente lo aprendí o solo lo ví? Autoevaluación honesta.' },
-    { name:'Planear ejercicios para reforzar la semana anterior', cat:'trabajo', rank:'B', freq:'weekly', fixed:false, visionImg:'trabajo', desc:'La repetición espaciada es la ciencia del aprendizaje duradero.' },
+    { name:'Planeación semanal completa de trabajo',   cat:'trabajo', rank:'B', freq:'weekly',  fixed:true,  visionImg:'trabajo.png',  desc:'Sin plan semanal, la semana te controla a ti.' },
+    { name:'Diligenciar planeadores (bitácora + notas de clase)', cat:'trabajo', rank:'B', freq:'weekly', fixed:false, visionImg:'trabajo.png', desc:'El registro es la memoria del Maestro. Lo que no se escribe, se olvida.' },
+    { name:'Verificar y organizar material de apoyo',  cat:'trabajo', rank:'C', freq:'weekly',  fixed:false, visionImg:'trabajo.png',  desc:'Recursos listos = clases fluidas = estudiantes que avanzan.' },
+    { name:'Evaluación de temas estudiados esta semana', cat:'trabajo', rank:'A', freq:'weekly', fixed:false, visionImg:'trabajo.png', desc:'¿Realmente lo aprendí o solo lo ví? Autoevaluación honesta.' },
+    { name:'Planear ejercicios para reforzar la semana anterior', cat:'trabajo', rank:'B', freq:'weekly', fixed:false, visionImg:'trabajo.png', desc:'La repetición espaciada es la ciencia del aprendizaje duradero.' },
     // — Mensual —
-    { name:'Verificar cumplimiento de objetivos de trabajo', cat:'trabajo', rank:'A', freq:'monthly', fixed:false, visionImg:'trabajo', desc:'El Maestro mide. Lo que no se mide, no se mejora.' },
-    { name:'Proponer premios personales por metas cumplidas', cat:'trabajo', rank:'B', freq:'monthly', fixed:false, visionImg:'trabajo', desc:'Recompénsate. El juego funciona cuando hay recompensa.' },
+    { name:'Verificar cumplimiento de objetivos de trabajo', cat:'trabajo', rank:'A', freq:'monthly', fixed:false, visionImg:'trabajo.png', desc:'El Maestro mide. Lo que no se mide, no se mejora.' },
+    { name:'Proponer premios personales por metas cumplidas', cat:'trabajo', rank:'B', freq:'monthly', fixed:false, visionImg:'trabajo.png', desc:'Recompénsate. El juego funciona cuando hay recompensa.' },
 
     // ╔══════════════════════════════════════════════════════════════╗
     // ║  🏍️  VIAJES — Explorador sobre Ruedas                        ║
     // ╚══════════════════════════════════════════════════════════════╝
     // — Diario —
-    { name:'Explorar un destino nuevo en el mapa',    cat:'viajes',  rank:'C', freq:'daily',   fixed:false, visionImg:'viajes', desc:'El Explorador siempre tiene el siguiente destino en mente.' },
-    { name:'Revisar la moto: aceite, llantas y frenos', cat:'viajes', rank:'B', freq:'daily',  fixed:true,  visionImg:'viajes', desc:'La moto te lleva lejos. Cuídala antes de partir.' },
-    { name:'Tener número de grúa o mecánico guardado', cat:'viajes', rank:'C', freq:'daily',   fixed:false, visionImg:'viajes', desc:'El Explorador astuto siempre tiene un plan B en la carretera.' },
+    { name:'Explorar un destino nuevo en el mapa',    cat:'viajes',  rank:'C', freq:'daily',   fixed:false, visionImg:'viajes_.png', desc:'El Explorador siempre tiene el siguiente destino en mente.' },
+    { name:'Revisar la moto: aceite, llantas y frenos', cat:'viajes', rank:'B', freq:'daily',  fixed:true,  visionImg:'viajes_.png', desc:'La moto te lleva lejos. Cuídala antes de partir.' },
+    { name:'Tener número de grúa o mecánico guardado', cat:'viajes', rank:'C', freq:'daily',   fixed:false, visionImg:'viajes_.png', desc:'El Explorador astuto siempre tiene un plan B en la carretera.' },
     // — Semanal —
-    { name:'Definir fecha tentativa del próximo viaje', cat:'viajes', rank:'B', freq:'weekly', fixed:false, visionImg:'viajes', desc:'Sin fecha, el viaje es solo un sueño. Con fecha, es un plan.' },
-    { name:'Investigar hospedaje para el siguiente destino', cat:'viajes', rank:'C', freq:'weekly', fixed:false, visionImg:'viajes', desc:'Hostal, hotel económico o Airbnb. El que mejor se adapte al viaje.' },
-    { name:'Calcular presupuesto total del viaje planeado', cat:'viajes', rank:'B', freq:'weekly', fixed:false, visionImg:'viajes', desc:'Viajar bien = viajar planeado. Sin números, hay sorpresas feas.' },
-    { name:'Definir 3 actividades principales del destino', cat:'viajes', rank:'C', freq:'weekly', fixed:false, visionImg:'viajes', desc:'No saturar el itinerario. Espacio para lo inesperado es lo mejor.' },
-    { name:'Desconexión real: sin trabajo ni preocupaciones', cat:'viajes', rank:'A', freq:'weekly', fixed:false, visionImg:'viajes', desc:'Viajar para escapar, no para llevar el trabajo encima.' },
-    { name:'Planear alimentación en ruta',             cat:'viajes',  rank:'C', freq:'weekly',  fixed:false, visionImg:'viajes', desc:'El Explorador come bien en el camino. Planearlo es parte del viaje.' },
+    { name:'Definir fecha tentativa del próximo viaje', cat:'viajes', rank:'B', freq:'weekly', fixed:false, visionImg:'viajes_.png', desc:'Sin fecha, el viaje es solo un sueño. Con fecha, es un plan.' },
+    { name:'Investigar hospedaje para el siguiente destino', cat:'viajes', rank:'C', freq:'weekly', fixed:false, visionImg:'viajes_.png', desc:'Hostal, hotel económico o Airbnb. El que mejor se adapte al viaje.' },
+    { name:'Calcular presupuesto total del viaje planeado', cat:'viajes', rank:'B', freq:'weekly', fixed:false, visionImg:'viajes_.png', desc:'Viajar bien = viajar planeado. Sin números, hay sorpresas feas.' },
+    { name:'Definir 3 actividades principales del destino', cat:'viajes', rank:'C', freq:'weekly', fixed:false, visionImg:'viajes_.png', desc:'No saturar el itinerario. Espacio para lo inesperado es lo mejor.' },
+    { name:'Desconexión real: sin trabajo ni preocupaciones', cat:'viajes', rank:'A', freq:'weekly', fixed:false, visionImg:'viajes_.png', desc:'Viajar para escapar, no para llevar el trabajo encima.' },
+    { name:'Planear alimentación en ruta',             cat:'viajes',  rank:'C', freq:'weekly',  fixed:false, visionImg:'viajes_.png', desc:'El Explorador come bien en el camino. Planearlo es parte del viaje.' },
     // — Mensual —
-    { name:'Registrar el último viaje: bitácora y fotos', cat:'viajes', rank:'A', freq:'monthly', fixed:false, visionImg:'viajes', desc:'Los recuerdos no registrados se pierden. Documenta tu aventura.' },
-    { name:'Definir monto fijo mensual para escapadas', cat:'viajes', rank:'B', freq:'monthly', fixed:true,  visionImg:'viajes', desc:'El fondo de aventuras no se toca. Es sagrado para el Explorador.' },
-    { name:'Proponer premio por objetivos de viaje logrados', cat:'viajes', rank:'B', freq:'monthly', fixed:false, visionImg:'viajes', desc:'Celebrar el viaje cumplido es parte del ritual del Explorador.' },
+    { name:'Registrar el último viaje: bitácora y fotos', cat:'viajes', rank:'A', freq:'monthly', fixed:false, visionImg:'viajes_.png', desc:'Los recuerdos no registrados se pierden. Documenta tu aventura.' },
+    { name:'Definir monto fijo mensual para escapadas', cat:'viajes', rank:'B', freq:'monthly', fixed:true,  visionImg:'viajes_.png', desc:'El fondo de aventuras no se toca. Es sagrado para el Explorador.' },
+    { name:'Proponer premio por objetivos de viaje logrados', cat:'viajes', rank:'B', freq:'monthly', fixed:false, visionImg:'viajes_.png', desc:'Celebrar el viaje cumplido es parte del ritual del Explorador.' },
 
     // ╔══════════════════════════════════════════════════════════════╗
     // ║  💚  SALUD — Sanador de Sí Mismo                             ║
     // ╚══════════════════════════════════════════════════════════════╝
     // — Diario: pilares biológicos (rank B/C — alto impacto, fixed) —
-    { name:'Dormir 8 horas completas',                 cat:'salud',   rank:'B', freq:'daily',   fixed:true,  visionImg:'salud',   desc:'El sueño es el superpoder gratuito. Sin él, todo lo demás falla.' },
-    { name:'Hidratarme: mínimo 2 litros de agua',     cat:'salud',   rank:'D', freq:'daily',   fixed:true,  visionImg:'salud',   desc:'Simple. Poderoso. Infravalorado. Agua primero.' },
-    { name:'Comer mínimo 3 veces al día',             cat:'salud',   rank:'C', freq:'daily',   fixed:true,  visionImg:'salud',   desc:'El cuerpo funciona con combustible regular. No te saltes comidas.' },
-    { name:'Comer una fruta hoy',                     cat:'salud',   rank:'D', freq:'daily',   fixed:false, visionImg:'salud',   desc:'Una fruta. Solo una. El Sanador cuida sus micronutrientes.' },
-    { name:'Higiene personal completa: piel, dientes, cuerpo', cat:'salud', rank:'D', freq:'daily', fixed:true, visionImg:'salud', desc:'Bloqueador solar, cepillo de dientes, ducha. Sin negociación.' },
-    { name:'Cortar pantallas 30 min antes de dormir', cat:'salud',   rank:'C', freq:'daily',   fixed:false, visionImg:'salud',   desc:'La luz azul sabotea tu sueño. El Sanador protege su recuperación.' },
+    { name:'Dormir 8 horas completas',                 cat:'salud',   rank:'B', freq:'daily',   fixed:true,  visionImg:'Salud.png',   desc:'El sueño es el superpoder gratuito. Sin él, todo lo demás falla.' },
+    { name:'Hidratarme: mínimo 2 litros de agua',     cat:'salud',   rank:'D', freq:'daily',   fixed:true,  visionImg:'Salud.png',   desc:'Simple. Poderoso. Infravalorado. Agua primero.' },
+    { name:'Comer mínimo 3 veces al día',             cat:'salud',   rank:'C', freq:'daily',   fixed:true,  visionImg:'Salud.png',   desc:'El cuerpo funciona con combustible regular. No te saltes comidas.' },
+    { name:'Comer una fruta hoy',                     cat:'salud',   rank:'D', freq:'daily',   fixed:false, visionImg:'Salud.png',   desc:'Una fruta. Solo una. El Sanador cuida sus micronutrientes.' },
+    { name:'Higiene personal completa: piel, dientes, cuerpo', cat:'salud', rank:'D', freq:'daily', fixed:true, visionImg:'Salud.png', desc:'Bloqueador solar, cepillo de dientes, ducha. Sin negociación.' },
+    { name:'Cortar pantallas 30 min antes de dormir', cat:'salud',   rank:'C', freq:'daily',   fixed:false, visionImg:'Salud.png',   desc:'La luz azul sabotea tu sueño. El Sanador protege su recuperación.' },
     // — Diario: mente y movimiento —
-    { name:'Ejercicio del día',                        cat:'guerrero', rank:'B', freq:'daily',  fixed:true,  visionImg:'salud',   desc:'El cuerpo es el templo. Moverlo es obligatorio, no opcional.' },
-    { name:'Meditación: mínimo 10 minutos',           cat:'mental',  rank:'C', freq:'daily',   fixed:true,  visionImg:'salud',   desc:'Callar el ruido interno es el entrenamiento más difícil.' },
-    { name:'Llenar el diario personal',               cat:'habitos', rank:'C', freq:'daily',   fixed:false, visionImg:'salud',   desc:'Escribir lo que siento me permite verlo con claridad.' },
-    { name:'Leer al menos 15 minutos',                cat:'lectura', rank:'C', freq:'daily',   fixed:false, visionImg:'salud',   desc:'15 minutos al día = 20 libros al año. El tiempo está ahí.' },
-    { name:'Solucionar un problema de lógica',        cat:'estudio', rank:'B', freq:'daily',   fixed:false, visionImg:'salud',   desc:'El cerebro también necesita ejercicio. Dáselo.' },
-    { name:'Estudiar un tema definido ayer',          cat:'estudio', rank:'B', freq:'daily',   fixed:false, visionImg:'salud',   desc:'Aprendizaje intencional. El tema elegido anoche, ejecutado hoy.' },
-    { name:'Actuar como la persona que quiero ser',   cat:'habitos', rank:'A', freq:'daily',   fixed:true,  visionImg:'salud',   desc:'La identidad se construye con acciones, no con intenciones.' },
+    { name:'Ejercicio del día',                        cat:'guerrero', rank:'B', freq:'daily',  fixed:true,  visionImg:'Salud.png',   desc:'El cuerpo es el templo. Moverlo es obligatorio, no opcional.' },
+    { name:'Meditación: mínimo 10 minutos',           cat:'mental',  rank:'C', freq:'daily',   fixed:true,  visionImg:'Salud.png',   desc:'Callar el ruido interno es el entrenamiento más difícil.' },
+    { name:'Llenar el diario personal',               cat:'habitos', rank:'C', freq:'daily',   fixed:false, visionImg:'Salud.png',   desc:'Escribir lo que siento me permite verlo con claridad.' },
+    { name:'Leer al menos 15 minutos',                cat:'lectura', rank:'C', freq:'daily',   fixed:false, visionImg:'Salud.png',   desc:'15 minutos al día = 20 libros al año. El tiempo está ahí.' },
+    { name:'Solucionar un problema de lógica',        cat:'estudio', rank:'B', freq:'daily',   fixed:false, visionImg:'Salud.png',   desc:'El cerebro también necesita ejercicio. Dáselo.' },
+    { name:'Estudiar un tema definido ayer',          cat:'estudio', rank:'B', freq:'daily',   fixed:false, visionImg:'Salud.png',   desc:'Aprendizaje intencional. El tema elegido anoche, ejecutado hoy.' },
+    { name:'Actuar como la persona que quiero ser',   cat:'habitos', rank:'A', freq:'daily',   fixed:true,  visionImg:'Salud.png',   desc:'La identidad se construye con acciones, no con intenciones.' },
     // — Semanal —
-    { name:'Buscar info de salud mental y aplicarla a tu meditación', cat:'mental', rank:'B', freq:'weekly', fixed:false, visionImg:'salud', desc:'La meditación informada es más poderosa que la intuitiva.' },
-    { name:'Planeación semanal de ejercicios',        cat:'guerrero', rank:'B', freq:'weekly', fixed:false, visionImg:'salud',   desc:'Sin plan de entrenamiento, el cuerpo improvisa. El Sanador no.' },
-    { name:'Planeación de actividades de la semana',  cat:'habitos', rank:'B', freq:'weekly',  fixed:true,  visionImg:'salud',   desc:'El Sanador organiza su semana antes de que la semana lo organice a él.' },
-    { name:'Evaluación de temas aprendidos esta semana', cat:'estudio', rank:'B', freq:'weekly', fixed:false, visionImg:'salud', desc:'¿Qué aprendí realmente? ¿Qué quedó pendiente?' },
+    { name:'Buscar info de salud mental y aplicarla a tu meditación', cat:'mental', rank:'B', freq:'weekly', fixed:false, visionImg:'Salud.png', desc:'La meditación informada es más poderosa que la intuitiva.' },
+    { name:'Planeación semanal de ejercicios',        cat:'guerrero', rank:'B', freq:'weekly', fixed:false, visionImg:'Salud.png',   desc:'Sin plan de entrenamiento, el cuerpo improvisa. El Sanador no.' },
+    { name:'Planeación de actividades de la semana',  cat:'habitos', rank:'B', freq:'weekly',  fixed:true,  visionImg:'Salud.png',   desc:'El Sanador organiza su semana antes de que la semana lo organice a él.' },
+    { name:'Evaluación de temas aprendidos esta semana', cat:'estudio', rank:'B', freq:'weekly', fixed:false, visionImg:'Salud.png', desc:'¿Qué aprendí realmente? ¿Qué quedó pendiente?' },
     // — Mensual —
-    { name:'Verificar si cumplí mis objetivos de salud', cat:'salud',  rank:'A', freq:'monthly', fixed:false, visionImg:'salud',  desc:'El Sanador se audita. Lo que no se revisa, no mejora.' },
-    { name:'Proponer premios por objetivos de salud cumplidos', cat:'salud', rank:'B', freq:'monthly', fixed:false, visionImg:'salud', desc:'El sistema de recompensas funciona. Actívalo.' },
-    { name:'Cuestionar: ¿mis propósitos reflejan quien quiero ser?', cat:'habitos', rank:'S', freq:'monthly', fixed:true, visionImg:'salud', desc:'Misión de reflexión profunda. Solo una vez al mes, pero cuenta más.' },
+    { name:'Verificar si cumplí mis objetivos de salud', cat:'salud',  rank:'A', freq:'monthly', fixed:false, visionImg:'Salud.png',  desc:'El Sanador se audita. Lo que no se revisa, no mejora.' },
+    { name:'Proponer premios por objetivos de salud cumplidos', cat:'salud', rank:'B', freq:'monthly', fixed:false, visionImg:'Salud.png', desc:'El sistema de recompensas funciona. Actívalo.' },
+    { name:'Cuestionar: ¿mis propósitos reflejan quien quiero ser?', cat:'habitos', rank:'S', freq:'monthly', fixed:true, visionImg:'Salud.png', desc:'Misión de reflexión profunda. Solo una vez al mes, pero cuenta más.' },
 
     // ╔══════════════════════════════════════════════════════════════╗
     // ║  🎨  HOBBIES — Bardo en Expansión                            ║
     // ╚══════════════════════════════════════════════════════════════╝
     // — Diario: micro-dosis creativas —
-    { name:'Descubrir una canción nueva hoy',          cat:'creatividad', rank:'D', freq:'daily',  fixed:false, visionImg:'hobbies', desc:'Un Bardo siempre tiene la playlist en expansión.' },
-    { name:'Hacer un origami',                         cat:'creatividad', rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies', desc:'Las manos que crean formas entrenan la mente que resuelve problemas.' },
-    { name:'Jugar una partida de ajedrez',             cat:'habitos',     rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies', desc:'Táctica, paciencia y visión. El tablero es el mejor gimnasio mental.' },
-    { name:'Paseo corto con los perros',               cat:'habitos',     rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies', desc:'Movimiento + mascotas = descanso real de la mente.' },
-    { name:'Escribir algo creativo hoy (texto libre)', cat:'creatividad', rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies', desc:'Una idea, un párrafo, una historia corta. Sin filtros, solo flujo.' },
-    { name:'Ver un capítulo de una serie',             cat:'habitos',     rank:'D', freq:'daily',  fixed:false, visionImg:'hobbies', desc:'Ocio consciente. El Bardo también descansa y se inspira.' },
-    { name:'Leer sobre algo práctico y útil',          cat:'lectura',     rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies', desc:'El conocimiento aplicado vale más que el teórico.' },
+    { name:'Descubrir una canción nueva hoy',          cat:'creatividad', rank:'D', freq:'daily',  fixed:false, visionImg:'hobbies.png', desc:'Un Bardo siempre tiene la playlist en expansión.' },
+    { name:'Hacer un origami',                         cat:'creatividad', rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies.png', desc:'Las manos que crean formas entrenan la mente que resuelve problemas.' },
+    { name:'Jugar una partida de ajedrez',             cat:'habitos',     rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies.png', desc:'Táctica, paciencia y visión. El tablero es el mejor gimnasio mental.' },
+    { name:'Paseo corto con los perros',               cat:'habitos',     rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies.png', desc:'Movimiento + mascotas = descanso real de la mente.' },
+    { name:'Escribir algo creativo hoy (texto libre)', cat:'creatividad', rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies.png', desc:'Una idea, un párrafo, una historia corta. Sin filtros, solo flujo.' },
+    { name:'Ver un capítulo de una serie',             cat:'habitos',     rank:'D', freq:'daily',  fixed:false, visionImg:'hobbies.png', desc:'Ocio consciente. El Bardo también descansa y se inspira.' },
+    { name:'Leer sobre algo práctico y útil',          cat:'lectura',     rank:'C', freq:'daily',  fixed:false, visionImg:'hobbies.png', desc:'El conocimiento aplicado vale más que el teórico.' },
     // — Semanal: proyectos creativos de mayor profundidad —
-    { name:'Cocinar un platillo nuevo o diferente',    cat:'creatividad', rank:'B', freq:'weekly', fixed:false, visionImg:'hobbies', desc:'La cocina es alquimia. Experimenta, crea, disfruta.' },
-    { name:'Pintar un cuadro o dibujar algo',          cat:'creatividad', rank:'B', freq:'weekly', fixed:false, visionImg:'hobbies', desc:'El Bardo plasma su mundo interior en formas y colores.' },
-    { name:'Practicar un paso de baile nuevo',         cat:'creatividad', rank:'B', freq:'weekly', fixed:false, visionImg:'hobbies', desc:'El cuerpo también tiene su lenguaje creativo. Úsalo.' },
-    { name:'Jugar un videojuego con intención',        cat:'habitos',     rank:'C', freq:'weekly', fixed:false, visionImg:'hobbies', desc:'No es tiempo perdido si lo elegiste conscientemente.' },
-    { name:'Practicar instrumento musical',            cat:'creatividad', rank:'A', freq:'weekly', fixed:false, visionImg:'hobbies', desc:'La música es el lenguaje que el Bardo domina con el tiempo.' },
-    { name:'Tallar una figura en madera',              cat:'creatividad', rank:'A', freq:'weekly', fixed:false, visionImg:'hobbies', desc:'Arte táctil. Lento. Meditativo. Completamente tuyo.' },
-    { name:'Construir, reparar o planear un invento',  cat:'creatividad', rank:'A', freq:'weekly', fixed:false, visionImg:'hobbies', desc:'El Bardo que inventa cruza la frontera hacia el ingeniero.' },
-    { name:'Ver una película elegida con criterio',    cat:'habitos',     rank:'C', freq:'weekly', fixed:false, visionImg:'hobbies', desc:'El cine bien elegido educa, inspira y expande perspectiva.' },
-    { name:'Buscar nuevos pasatiempos y crear una lista', cat:'creatividad', rank:'B', freq:'weekly', fixed:false, visionImg:'hobbies', desc:'El Bardo siempre está buscando la siguiente pasión.' },
+    { name:'Cocinar un platillo nuevo o diferente',    cat:'creatividad', rank:'B', freq:'weekly', fixed:false, visionImg:'hobbies.png', desc:'La cocina es alquimia. Experimenta, crea, disfruta.' },
+    { name:'Pintar un cuadro o dibujar algo',          cat:'creatividad', rank:'B', freq:'weekly', fixed:false, visionImg:'hobbies.png', desc:'El Bardo plasma su mundo interior en formas y colores.' },
+    { name:'Practicar un paso de baile nuevo',         cat:'creatividad', rank:'B', freq:'weekly', fixed:false, visionImg:'hobbies.png', desc:'El cuerpo también tiene su lenguaje creativo. Úsalo.' },
+    { name:'Jugar un videojuego con intención',        cat:'habitos',     rank:'C', freq:'weekly', fixed:false, visionImg:'hobbies.png', desc:'No es tiempo perdido si lo elegiste conscientemente.' },
+    { name:'Practicar instrumento musical',            cat:'creatividad', rank:'A', freq:'weekly', fixed:false, visionImg:'hobbies.png', desc:'La música es el lenguaje que el Bardo domina con el tiempo.' },
+    { name:'Tallar una figura en madera',              cat:'creatividad', rank:'A', freq:'weekly', fixed:false, visionImg:'hobbies.png', desc:'Arte táctil. Lento. Meditativo. Completamente tuyo.' },
+    { name:'Construir, reparar o planear un invento',  cat:'creatividad', rank:'A', freq:'weekly', fixed:false, visionImg:'hobbies.png', desc:'El Bardo que inventa cruza la frontera hacia el ingeniero.' },
+    { name:'Ver una película elegida con criterio',    cat:'habitos',     rank:'C', freq:'weekly', fixed:false, visionImg:'hobbies.png', desc:'El cine bien elegido educa, inspira y expande perspectiva.' },
+    { name:'Buscar nuevos pasatiempos y crear una lista', cat:'creatividad', rank:'B', freq:'weekly', fixed:false, visionImg:'hobbies.png', desc:'El Bardo siempre está buscando la siguiente pasión.' },
     // — Mensual —
-    { name:'Crear presupuesto para insumos de hobbies', cat:'creatividad', rank:'B', freq:'monthly', fixed:false, visionImg:'hobbies', desc:'Los hobbies cuestan. Planificarlos es respetarlos.' },
-    { name:'Proponer premios por hobbies completados',  cat:'creatividad', rank:'B', freq:'monthly', fixed:false, visionImg:'hobbies', desc:'Celebrar la creación da energía para seguir creando.' },
-    { name:'Relacionar mis intereses con amigos',       cat:'creatividad', rank:'A', freq:'monthly', fixed:false, visionImg:'hobbies', desc:'Los hobbies compartidos son vínculos que duran.' },
+    { name:'Crear presupuesto para insumos de hobbies', cat:'creatividad', rank:'B', freq:'monthly', fixed:false, visionImg:'hobbies.png', desc:'Los hobbies cuestan. Planificarlos es respetarlos.' },
+    { name:'Proponer premios por hobbies completados',  cat:'creatividad', rank:'B', freq:'monthly', fixed:false, visionImg:'hobbies.png', desc:'Celebrar la creación da energía para seguir creando.' },
+    { name:'Relacionar mis intereses con amigos',       cat:'creatividad', rank:'A', freq:'monthly', fixed:false, visionImg:'hobbies.png', desc:'Los hobbies compartidos son vínculos que duran.' },
 
     // ╔══════════════════════════════════════════════════════════════╗
     // ║  🏆  LOGROS — Campeón con Mapa Financiero                    ║
     // ╚══════════════════════════════════════════════════════════════╝
     // — Diario —
-    { name:'Avanzar en el tecnólogo: tarea del día',   cat:'logros',  rank:'A', freq:'daily',   fixed:true,  visionImg:'logros',  desc:'La graduación no es un evento, es la suma de días como hoy.' },
+    { name:'Avanzar en el tecnólogo: tarea del día',   cat:'logros',  rank:'A', freq:'daily',   fixed:true,  visionImg:'Logros.png',  desc:'La graduación no es un evento, es la suma de días como hoy.' },
     // — Semanal —
-    { name:'Buscar ofertas de empleo en mi área',      cat:'logros',  rank:'A', freq:'weekly',  fixed:false, visionImg:'logros',  desc:'El contrato laboral soñado requiere búsqueda activa, no espera pasiva.' },
+    { name:'Buscar ofertas de empleo en mi área',      cat:'logros',  rank:'A', freq:'weekly',  fixed:false, visionImg:'Logros.png',  desc:'El contrato laboral soñado requiere búsqueda activa, no espera pasiva.' },
     // — Mensual: metas financieras concretas (rank según urgencia/impacto) —
-    { name:'Pagar cuota de la moto este mes',          cat:'logros',  rank:'S', freq:'monthly', fixed:true,  visionImg:'logros',  desc:'⭐ MISIÓN PRIORITARIA. La moto es el vehículo de tu libertad.' },
-    { name:'Abonar a deuda de tarjeta',                cat:'logros',  rank:'A', freq:'monthly', fixed:true,  visionImg:'logros',  desc:'Cada abono reduce el peso financiero. La deuda no descansa, el Campeón tampoco.' },
-    { name:'Apartar cuota del impuesto predial',       cat:'logros',  rank:'A', freq:'monthly', fixed:false, visionImg:'logros',  desc:'Pagar impuestos a tiempo evita multas. El Campeón se adelanta.' },
-    { name:'Apartar cuota para el SOAT',               cat:'logros',  rank:'B', freq:'monthly', fixed:false, visionImg:'logros',  desc:'El SOAT no es opcional. Separa la cuota mensual, no el dolor anual.' },
-    { name:'Apartar cuota para Tecnomecánica',         cat:'logros',  rank:'B', freq:'monthly', fixed:false, visionImg:'logros',  desc:'La Tecno es una vez al año pero cuesta. Cuota mensual = sin sorpresas.' },
-    { name:'Aportar al ahorro colchón de seguridad',   cat:'logros',  rank:'S', freq:'monthly', fixed:false, visionImg:'logros',  desc:'El colchón de ahorro te protege de las crisis. Es el escudo del Campeón.' },
-    { name:'Hacer el presupuesto mensual de compras',  cat:'logros',  rank:'B', freq:'monthly', fixed:true,  visionImg:'logros',  desc:'Sin presupuesto, el dinero simplemente desaparece. Con él, tú decides.' },
-    { name:'Avanzar en inscripción a U virtual',       cat:'logros',  rank:'S', freq:'monthly', fixed:false, visionImg:'logros',  desc:'La educación superior es la inversión con mayor retorno. Inscríbete.' },
-    { name:'Revisar pago a madre (cuota mensual)',     cat:'logros',  rank:'A', freq:'monthly', fixed:true,  visionImg:'logros',  desc:'Compromiso familiar y financiero. El Campeón cumple su palabra.' },
+    { name:'Pagar cuota de la moto este mes',          cat:'logros',  rank:'S', freq:'monthly', fixed:true,  visionImg:'Logros.png',  desc:'⭐ MISIÓN PRIORITARIA. La moto es el vehículo de tu libertad.' },
+    { name:'Abonar a deuda de tarjeta',                cat:'logros',  rank:'A', freq:'monthly', fixed:true,  visionImg:'Logros.png',  desc:'Cada abono reduce el peso financiero. La deuda no descansa, el Campeón tampoco.' },
+    { name:'Apartar cuota del impuesto predial',       cat:'logros',  rank:'A', freq:'monthly', fixed:false, visionImg:'Logros.png',  desc:'Pagar impuestos a tiempo evita multas. El Campeón se adelanta.' },
+    { name:'Apartar cuota para el SOAT',               cat:'logros',  rank:'B', freq:'monthly', fixed:false, visionImg:'Logros.png',  desc:'El SOAT no es opcional. Separa la cuota mensual, no el dolor anual.' },
+    { name:'Apartar cuota para Tecnomecánica',         cat:'logros',  rank:'B', freq:'monthly', fixed:false, visionImg:'Logros.png',  desc:'La Tecno es una vez al año pero cuesta. Cuota mensual = sin sorpresas.' },
+    { name:'Aportar al ahorro colchón de seguridad',   cat:'logros',  rank:'S', freq:'monthly', fixed:false, visionImg:'Logros.png',  desc:'El colchón de ahorro te protege de las crisis. Es el escudo del Campeón.' },
+    { name:'Hacer el presupuesto mensual de compras',  cat:'logros',  rank:'B', freq:'monthly', fixed:true,  visionImg:'Logros.png',  desc:'Sin presupuesto, el dinero simplemente desaparece. Con él, tú decides.' },
+    { name:'Avanzar en inscripción a U virtual',       cat:'logros',  rank:'S', freq:'monthly', fixed:false, visionImg:'Logros.png',  desc:'La educación superior es la inversión con mayor retorno. Inscríbete.' },
+    { name:'Revisar pago a madre (cuota mensual)',     cat:'logros',  rank:'A', freq:'monthly', fixed:true,  visionImg:'Logros.png',  desc:'Compromiso familiar y financiero. El Campeón cumple su palabra.' },
   ];
 
   const added = [];
@@ -946,7 +1009,8 @@ function loadVisionBoardMissions(){
       freq: vm.freq || 'daily',
       visionImg: vm.visionImg || '',
       createdDate: today,
-      lastDoneDate: null
+      lastDoneDate: null,
+      updatedAt: Date.now()
     });
     added.push(vm.name);
   });

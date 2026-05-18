@@ -9,7 +9,7 @@
 // ── Arranque: auto-login si ya había sesión guardada ──────────────────────
 const savedUser = localStorage.getItem('sl_current_user');
 if(savedUser){
-  bootSession(savedUser);          // async — pull Gist si está configurado
+  bootSession(savedUser);          // arranca sesión desde localStorage
 } else {
   document.getElementById('loginOver').classList.add('show');
 }
@@ -293,6 +293,7 @@ function importTemplates(){
         xp: XPR[rank] || 30,
         fixed,
         done: false,
+        updatedAt: Date.now(),
         createdDate: new Date().toLocaleDateString('es-CO',{year:'numeric',month:'2-digit',day:'2-digit'}),
         lastDoneDate: null
       });

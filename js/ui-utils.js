@@ -127,7 +127,7 @@ function switchTab(tab){
     if(match) btn.classList.toggle('active-tab', match[1]===tab);
   });
   // Render each tab on demand
-  if(tab==='missions'){  renderAllQuests(); renderLibBookOfMonth(); }
+  if(tab==='missions'){  renderDailyMissions(); renderWeeklyMission(); renderMonthlyMission(); renderAllQuests(); renderLibBookOfMonth(); }
   if(tab==='shop')       renderShop();
   if(tab==='inventory')  renderInventory();
   if(tab==='perfil')     renderPerfil();
@@ -525,7 +525,7 @@ function evalAchievement(a){
     case 'totalXP':   return S.totalXP >= a.target;
     case 'catMax':    return Object.values(cc).some(v=>v>=a.target);
     case 'redeem':    return S.items.some(it=>it.red);
-    case 'custom':    return false; // custom achievements are manual
+    case 'custom':    return !!a.customDone; // FIX-BUG-CUSTOM: el usuario puede marcarlo manualmente
     default:          return false;
   }
 }

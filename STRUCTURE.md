@@ -23,7 +23,7 @@ constants.js → storage.js → auth.js → rewards.js → animations.js
 | Archivo | §§ | Responsabilidad |
 |---|---|---|
 | `constants.js` | §01 | Constantes globales: CLASSES, CAT_LABELS, DAILY_CATS, PRANK, XPR. Variables mutables globales: S, currentUser, pendingId, editingMissionId, shopPeriod, currentPeriod |
-| `storage.js` | §02–02B | getUserKey(), loadState(), defaultState(), defaultAchievements(), save() · §02-B: gistGetCfg/SaveCfg/ClearCfg(), gistPush(), gistPull(), gistVerify() |
+| `storage.js` | §02 | getUserKey(), loadState(), defaultState(), defaultAchievements(), save() |
 | `auth.js` | §03–05 | doLogin(), doLogout(), assignDailyMissions(), getDailyMissions(), checkReset(), updateResetUI(), changeResetHour() |
 | `rewards.js` | §06–07 | gainXP(), getRank(), detectClass(), renderAchievements(), renderAchievEditor(), addAchiev(), delAchiev() |
 | `animations.js` | §08 | morphAvatarEmoji(), morphProfileAvatar(), updateClassUI() |
@@ -94,7 +94,6 @@ S = {
 | Añadir emoji al picker | `ui-init.js` → EP_DATA array |
 | Nueva categoría de misión | `constants.js` → CAT_LABELS + `ui-init.js` → EP_CATS + `auth.js` → DAILY_CATS si aplica |
 | Cambiar animación de flash al guardar | `css/base.css` → @keyframes actionFlash + `ui-render.js` → renderWithFlash() |
-| Configurar o cambiar sync GitHub Gist | `js/storage.js` §02-B (lógica) + `js/ui-backup.js` §19 (UI) + `index.html` #gistForm |
 | Nuevo efecto visual (compra, nivel) | `effects.js` → FX object (también: FX.questComplete para misiones, FX.itemRemoved para inventario) |
 
 ---

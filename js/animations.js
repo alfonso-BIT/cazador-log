@@ -168,12 +168,19 @@ function updateClassUI(){
   const profileAv = document.getElementById('profileAvatar');
 
   if(cls){
+    // FIX-BUG-AVATARCAT: en el primer render tras una recarga, _lastAvatarCat es null
+    // aunque la clase no haya cambiado. Inicializamos silenciosamente para evitar
+    // que catChanged sea true y dispare la notificación "CLASE DOMINANTE" en cada carga.
+    if(!_avatarCatInitialized){
+      _lastAvatarCat       = cls.cat;
+      _avatarCatInitialized = true;
+    }
     const catChanged = cls.cat !== _lastAvatarCat;
 
     banner.classList.add('show');
     document.getElementById('classNameEl').textContent = cls.emoji + ' ' + cls.name;
     document.getElementById('classDescEl').textContent = cls.desc;
-    pc.textContent = '▸ ' + cls.name + ' — CAZADOR INDEPENDIENTE';
+    pc.textContent = '▸ ' + cls.emoji + ' ' + cls.name;
 
     if(catChanged){
       const fromEmoji = av.textContent.trim() || '⚔️';

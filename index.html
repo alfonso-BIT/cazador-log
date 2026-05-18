@@ -802,65 +802,6 @@
       </div>
     </div>
 
-    <!-- ☁ GITHUB GIST SYNC -->
-    <div class="bk-section">
-      <div class="bk-section-eyebrow">◈ SYNC AUTOMÁTICO — OPCIONAL</div>
-      <div class="bk-section-title">GitHub Gist <span id="gistStatus" style="font-size:9px;font-weight:400;letter-spacing:1px;margin-left:8px;">○ SIN CONFIGURAR</span></div>
-      <div class="tip-block">
-        <span class="tip-base">¿Para qué sirve?</span>
-        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ VER EXPLICACIÓN</button>
-        <div class="tip-detail">Conecta la app a un <strong style="color:var(--blue)">GitHub Gist</strong> (archivo en la nube de GitHub, gratis). Una vez configurado, cada vez que guardes algo la app sube tus datos automáticamente. Puedes restaurarlos en cualquier dispositivo con el mismo token.<br><br>Necesitas una cuenta en <strong>github.com</strong> y crear un token en: Settings → Developer settings → Personal access tokens → Tokens (classic) → con permiso <strong>gist</strong>.</div>
-      </div>
-
-      <!-- Formulario de conexión (visible si no conectado) -->
-      <div id="gistForm">
-        <div class="bk-card">
-          <div class="bk-card-label" style="margin-bottom:8px;">PASO 1 — TOKEN DE GITHUB</div>
-          <div style="position:relative;display:flex;align-items:center;">
-            <input id="gistToken" type="password" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-              style="width:100%;box-sizing:border-box;background:rgba(0,20,50,0.8);border:1px solid rgba(0,100,200,0.3);color:var(--bright);padding:9px 36px 9px 10px;font-family:monospace;font-size:11px;letter-spacing:1px;outline:none;">
-            <button id="gistTokenToggle" onclick="toggleGistToken()" title="Mostrar / ocultar token"
-              style="position:absolute;right:0;top:0;bottom:0;width:34px;background:rgba(0,40,90,0.7);border:none;border-left:1px solid rgba(0,100,200,0.3);color:rgba(100,180,255,0.7);cursor:pointer;font-size:13px;display:flex;align-items:center;justify-content:center;transition:color 0.2s;">○</button>
-          </div>
-        </div>
-        <div class="bk-card" style="margin-top:6px;">
-          <div class="bk-card-label" style="margin-bottom:8px;">PASO 2 — ID DEL GIST</div>
-          <input id="gistId" type="text" placeholder="a1b2c3d4e5f6… (ID del Gist vacío)"
-            style="width:100%;box-sizing:border-box;background:rgba(0,20,50,0.8);border:1px solid rgba(0,100,200,0.3);color:var(--bright);padding:9px 10px;font-family:monospace;font-size:11px;letter-spacing:1px;outline:none;">
-        </div>
-        <div class="bk-card" style="margin-top:6px;">
-          <div class="bk-card-row">
-            <div class="bk-card-info">
-              <div class="bk-card-detail">Crea un Gist vacío en gist.github.com, copia su ID de la URL y pégalo arriba.</div>
-            </div>
-            <button id="gistBtnConnect" class="bk-btn blue" onclick="gistConnect()">✓ CONECTAR</button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Panel conectado (visible si conectado) -->
-      <div id="gistConnected" style="display:none;">
-        <div class="bk-card">
-          <div class="bk-card-row">
-            <div class="bk-card-info">
-              <div class="bk-card-label">AUTO-SYNC ACTIVO</div>
-              <div class="bk-card-detail">Cada guardado sube tus datos al Gist automáticamente.</div>
-            </div>
-            <button id="gistBtnPull" class="bk-btn green" onclick="gistPullNow()">⬇ TRAER DATOS</button>
-          </div>
-        </div>
-        <div class="bk-card" style="margin-top:6px;">
-          <div class="bk-card-row">
-            <div class="bk-card-info">
-              <div class="bk-card-detail">Desconectar no borra tu Gist ni tus datos locales.</div>
-            </div>
-            <button id="gistBtnDisconnect" class="bk-btn" style="border-color:rgba(239,68,68,0.4);color:#f87171;" onclick="gistDisconnect()">✕ DESCONECTAR</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="bk-footer">◈ Gist sync es opcional. Sin él, los datos siguen siendo solo locales.</div>
   </div>
 
 </div><!-- end .wrap -->

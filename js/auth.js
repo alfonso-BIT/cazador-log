@@ -6,12 +6,10 @@
 // ║                                                                          ║
 // ║  Funciones:                                                              ║
 // ║   · bootSession(u, fromLogin?)       ← RUTA ÚNICA DE ARRANQUE           ║
-// ║       Async. Llamada por doLogin() y por ui-init.js al arrancar.       ║
+// ║       Llamada por doLogin() y por ui-init.js al arrancar.              ║
 // ║       1. Asigna currentUser, carga S desde localStorage.               ║
-// ║       2. Si Gist configurado → gistPull() silencioso antes del render. ║
-// ║       3. Llama restoreSessionUI() → checkReset() → render().           ║
-// ║       4. Si fromLogin: oculta #loginOver, muestra notif bienvenida.    ║
-// ║       5. Llama syncStart() → pull periódico + visibilitychange (§02-C) ║
+// ║       2. Llama restoreSessionUI() → checkReset() → render().           ║
+// ║       3. Si fromLogin: oculta #loginOver, muestra notif bienvenida.    ║
 // ║                                                                          ║
 // ║   · doLogin()                                                            ║
 // ║       Lee #loginUser.value y delega en bootSession(u, true).           ║
@@ -29,24 +27,12 @@
 // ═══════════════════════════════════════════════════════
 // ── bootSession ───────────────────────────────────────────────────────────
 // Ruta compartida de arranque de sesión (auto-login al cargar + doLogin).
-// Si Gist está configurado hace un pull silencioso ANTES del primer render,
-// así el usuario siempre ve sus datos más recientes sin pulsar nada.
-async function bootSession(u, fromLogin = false){
+function bootSession(u, fromLogin = false){
   currentUser = u;
   localStorage.setItem('sl_current_user', u);
   S   = loadState(u);
   XPR = S.xprConfig || {D:15,C:30,B:50,A:80,S:120};
   finOffset = 0;
-
-  // ── Pull automático si Gist está configurado ──────────────────────────
-  if(gistGetCfg()?.token){
-    notif('☁ SINCRONIZANDO…');
-    const pulled = await gistPull();
-    if(pulled){
-      S   = loadState(u);          // recargar con datos frescos del Gist
-      XPR = S.xprConfig || {D:15,C:30,B:50,A:80,S:120};
-    }
-  }
 
   // ── Inicializar nombre si es usuario nuevo ────────────────────────────
   if(!S.name || S.name === 'CAZADOR'){
@@ -66,20 +52,27 @@ async function bootSession(u, fromLogin = false){
     notif('▸ BIENVENIDO, ' + u.toUpperCase() + ' ◂');
     if(!S.missions || S.missions.length === 0) setTimeout(openTplModal, 400);
   }
-  syncStart();  // §02-C: arranca pull periódico + listener de visibilidad
 }
 
 function doLogin(){
-  const u = document.getElementById('loginUser').value.trim();
-  if(!u){ notif('▸ INGRESA UN NOMBRE DE USUARIO'); return; }
+  const raw = document.getElementById('loginUser').value.trim();
+  if(!raw){ notif('▸ INGRESA UN NOMBRE DE USUARIO'); return; }
+  // FIX-QA-05: sanitizar para evitar claves de localStorage inesperadas.
+  // Solo letras, números, guión y guión bajo. Máximo 32 caracteres.
+  const u = raw.replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 32);
+  if(!u){ notif('▸ NOMBRE INVÁLIDO — USA LETRAS, NÚMEROS, - O _'); return; }
+  if(u !== raw) notif('▸ NOMBRE AJUSTADO A: ' + u.toUpperCase());
   bootSession(u, true);
 }
 
 function doLogout(){
-  syncStop();   // §02-C: detener live sync antes de limpiar sesión
   currentUser = null;
   S = null;
   localStorage.removeItem('sl_current_user');
+  // FIX-BUG-AVATARCAT: resetear flags de avatar para que el próximo login
+  // inicialice la clase silenciosamente en el primer render.
+  if(typeof _avatarCatInitialized !== 'undefined') _avatarCatInitialized = false;
+  if(typeof _lastAvatarCat       !== 'undefined') _lastAvatarCat = null;
   const loginOver = document.getElementById('loginOver');
   if(loginOver) loginOver.classList.add('show');
   const inp = document.getElementById('loginUser');
@@ -260,11 +253,16 @@ function getWeekKey(){
   const rh = S.resetHour||0;
   const d = new Date(now);
   if(now.getHours()<rh) d.setDate(d.getDate()-1);
-  // ISO week number: Monday = start of week
-  const jan4 = new Date(d.getFullYear(), 0, 4);
-  const dayNum = Math.floor((d - jan4) / 86400000);
-  const week = Math.floor((dayNum + jan4.getDay()) / 7) + 1;
-  return d.getFullYear() + '_W' + String(week).padStart(2,'0');
+  // FIX-BUG-WEEKKEY: fórmula ISO correcta (nearest-Thursday method).
+  // La anterior producía W00 en los primeros días de enero de algunos años
+  // y no alineaba el inicio de semana con el lunes de forma consistente.
+  // Esta implementación es el estándar ISO 8601 y nunca genera W00.
+  const tmp = new Date(d);
+  tmp.setHours(0,0,0,0);
+  tmp.setDate(tmp.getDate() + 3 - (tmp.getDay() + 6) % 7); // shift to Thursday
+  const jan4 = new Date(tmp.getFullYear(), 0, 4);
+  const week = 1 + Math.round(((tmp - jan4) / 86400000 - 3 + (jan4.getDay() + 6) % 7) / 7);
+  return tmp.getFullYear() + '_W' + String(week).padStart(2,'0');
 }
 
 function getMonthKey(){
@@ -277,16 +275,21 @@ function getMonthKey(){
 
 function assignWeeklyMission(){
   const weekKey = getWeekKey();
-  if(S.weeklyAssigned && S.weeklyAssigned.key === weekKey) return;
-  // Pick a random weekly-freq mission (prefer not-recently-done)
   const pool = S.missions.filter(m => m.freq === 'weekly');
-  if(!pool.length){ S.weeklyAssigned = { key: weekKey, id: null }; save(); return; }
-  // Avoid repeating last week's if possible
+  if(S.weeklyAssigned && S.weeklyAssigned.key === weekKey){
+    // La clave ya coincide, pero verificar que el id aún existe
+    const exists = pool.find(m => m.id === S.weeklyAssigned.id);
+    if(exists) return; // todo bien
+    S.weeklyAssigned = null; // forzar reasignación aunque la key coincida
+  }
+  if(!pool.length){
+    console.warn('[CAZADOR] assignWeeklyMission — SIN misiones con freq=weekly');
+    S.weeklyAssigned = { key: weekKey, id: null }; save(); return;
+  }
   const lastId = S.weeklyAssigned?.id;
   const fresh = pool.filter(m => m.id !== lastId);
   const candidates = fresh.length ? fresh : pool;
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
-  // Reset done on new week
   pool.forEach(m => { m.weeklyDone = false; });
   S.weeklyClaimed = false;
   S.weeklyAssigned = { key: weekKey, id: pick.id };
@@ -295,14 +298,20 @@ function assignWeeklyMission(){
 
 function assignMonthlyMission(){
   const monthKey = getMonthKey();
-  if(S.monthlyAssigned && S.monthlyAssigned.key === monthKey) return;
   const pool = S.missions.filter(m => m.freq === 'monthly');
-  if(!pool.length){ S.monthlyAssigned = { key: monthKey, id: null }; save(); return; }
+  if(S.monthlyAssigned && S.monthlyAssigned.key === monthKey){
+    const exists = pool.find(m => m.id === S.monthlyAssigned.id);
+    if(exists) return;
+    S.monthlyAssigned = null;
+  }
+  if(!pool.length){
+    console.warn('[CAZADOR] assignMonthlyMission — SIN misiones con freq=monthly');
+    S.monthlyAssigned = { key: monthKey, id: null }; save(); return;
+  }
   const lastId = S.monthlyAssigned?.id;
   const fresh = pool.filter(m => m.id !== lastId);
   const candidates = fresh.length ? fresh : pool;
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
-  // Reset done on new month
   pool.forEach(m => { m.monthlyDone = false; });
   S.monthlyClaimed = false;
   S.monthlyAssigned = { key: monthKey, id: pick.id };
@@ -384,7 +393,12 @@ function checkReset(){
       base.setDate(base.getDate()-1); // go one day back from the "today" anchor
       const prevKey = base.toDateString()+'_h'+rh;
       if(S.lastDate===prevKey) S.streak++;
-      else if(S.todayXP===0) S.streak=0;
+      // FIX-BUG-STREAK: si el último día guardado NO es ayer (día no consecutivo),
+      // la racha se rompe siempre — independientemente de si había XP o no.
+      // La condición anterior (else if todayXP===0) era incorrecta: todayXP pertenece
+      // a la sesión anterior, no a ayer, por lo que saltar 2+ días con XP previo
+      // dejaba la racha congelada en lugar de resetearla a 0.
+      else S.streak=0;
       // penalty — only show if yesterday had activity but not all missions done
       const daily = getDailyMissions();
       const doneMin = daily.filter(m=>m.done).length;
@@ -396,8 +410,19 @@ function checkReset(){
         }
       }
     }
-    S.missions.forEach(m=>m.done=false);
-    S.todayXP=0; S.claimed=false; S.lastDate=key;
+    // BUG-01 FIX: usar un timestamp estable derivado de la clave del día (medianoche del día
+    // de reset) en lugar de Date.now(). Así las misiones completadas en el otro navegador
+    // —que tienen updatedAt = momento real de la acción— siempre ganan sobre este reset,
+    // porque su timestamp es posterior a la medianoche del día que se está reseteando.
+    const resetDayBase = new Date(key.split('_h')[0]);
+    const resetTs = resetDayBase.getTime() || Date.now();
+    S.missions.forEach(m => {
+      // Solo resetear si la misión no fue completada HOY en el otro dispositivo.
+      // Si updatedAt > resetTs significa que se completó después de la medianoche
+      // del día de reset → respetar ese done=true y no pisarlo.
+      if(m.updatedAt <= resetTs){ m.done = false; m.updatedAt = resetTs; }
+    });
+    S.todayXP=0; S.claimed=false; S.claimedDate=''; S.lastDate=key;
     // Assign new daily missions
     S.dailyAssigned = null;
     assignDailyMissions();
@@ -405,6 +430,10 @@ function checkReset(){
     assignMonthlyMission();
     save();
   } else {
+    // FIX-BUG-CLAIM: si claimedDate coincide con el día actual, asegurar claimed=true.
+    // Esto repara el caso donde un import de backup puso claimed=false
+    // incorrectamente mientras la fecha de reclamo sigue siendo hoy.
+    if(S.claimedDate && S.claimedDate === key) S.claimed = true;
     assignDailyMissions();
     assignWeeklyMission();
     assignMonthlyMission();
