@@ -275,7 +275,8 @@ function libStats(){
 function libFiltered(){
   if(!S.books) return [];
   return S.books.filter(b=>{
-    const matchFilter = _libFilter==='all' || b.status===_libFilter;
+    const status = b.status || 'reading';
+    const matchFilter = _libFilter==='all' || status===_libFilter;
     const q = _libSearch.toLowerCase().trim();
     const matchSearch = !q ||
       (b.title||'').toLowerCase().includes(q) ||
@@ -434,7 +435,7 @@ function renderBiblioteca(){
     </div>
 
     <!-- Leyendo ahora (hero card) -->
-    ${currentBook ? renderLibCurrentHero(currentBook) : ''}
+    ${currentBook && (_libFilter==='all'||_libFilter==='reading') ? renderLibCurrentHero(currentBook) : ''}
 
     <!-- Toolbar: buscar + filtros + vista -->
     <div class="lib-toolbar">
@@ -453,17 +454,19 @@ function renderBiblioteca(){
     </div>
 
     <!-- Grid / lista de libros -->
-    ${books.length
-      ? `<div class="lib-grid${_libView==='list'?' list-view':''}">${
-          books.map(b => _libView==='list' ? renderLibListCard(b) : renderLibGridCard(b)).join('')
-        }</div>`
-      : `<div class="lib-empty">
-           <span class="lib-empty-icon">📚</span>
-           ${S.books.length===0
-             ? 'Tu biblioteca está vacía.<br>Añade tu primer libro con el botón de abajo.'
-             : 'Sin libros con ese filtro.'}
-         </div>`
-    }
+    ${(()=>{
+      const heroVisible = !!(currentBook && (_libFilter==='all'||_libFilter==='reading'));
+      const gridBooks = heroVisible ? books.filter(b=>b.id!==currentBook.id) : books;
+      if(!gridBooks.length){
+        if(heroVisible) return '';
+        return '<div class="lib-empty"><span class="lib-empty-icon">📚</span>'
+          + (S.books.length===0 ? 'Tu biblioteca está vacía.<br>Añade tu primer libro con el botón de abajo.' : 'Sin libros con ese filtro.')
+          + '</div>';
+      }
+      return '<div class="lib-grid'+(_libView==='list'?' list-view':'')+'">'
+        + gridBooks.map(b => _libView==='list' ? renderLibListCard(b) : renderLibGridCard(b)).join('')
+        + '</div>';
+    })()}
 
     <button class="lib-add-btn" onclick="openBookModal()">＋ AÑADIR LIBRO</button>
 

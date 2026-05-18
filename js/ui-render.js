@@ -112,7 +112,6 @@ function renderDailyMissions(){
   <div style="color:var(--muted);font-size:calc(11px * var(--fs-scale));letter-spacing:2px;margin-bottom:4px;">◈ SIN MISIONES EN EL BANCO ◈</div>
   <div style="color:var(--accent);font-size:calc(12px * var(--fs-scale));letter-spacing:1px;opacity:0.8;">Crea misiones para empezar a ganar XP</div>
   <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:4px;">
-    <button onclick="openTplModal('import')" style="padding:10px 18px;background:linear-gradient(135deg,rgba(0,170,255,0.18),rgba(0,80,160,0.15));border:1px solid rgba(0,170,255,0.5);color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(10px * var(--fs-scale));letter-spacing:2px;cursor:pointer;border-radius:4px;">📋 CARGAR PLANTILLAS</button>
     <button onclick="switchTab('config')" style="padding:10px 18px;background:linear-gradient(135deg,rgba(0,255,140,0.12),rgba(0,120,60,0.10));border:1px solid rgba(0,255,140,0.35);color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(10px * var(--fs-scale));letter-spacing:2px;cursor:pointer;border-radius:4px;">✚ CREAR MISIÓN</button>
   </div>
 </div>`;
@@ -235,12 +234,12 @@ function renderMissionCard(m, fromDaily){
   const toggleFn = mFreq === 'weekly' ? `toggleWeekly('${m.id}')` : mFreq === 'monthly' ? `toggleMonthly('${m.id}')` : `toggle('${m.id}')`;
   const visionBoardOptions = `
     <option value="" ${!m.visionImg?'selected':''}>— Sin imagen —</option>
-    <option value="familia.png" ${m.visionImg==='familia.png'?'selected':''}>👨‍👩‍👧 familia.png</option>
-    <option value="trabajo.png" ${m.visionImg==='trabajo.png'?'selected':''}>💼 trabajo.png</option>
-    <option value="viajes_.png" ${m.visionImg==='viajes_.png'?'selected':''}>🏍️ viajes_.png</option>
-    <option value="Salud.png" ${m.visionImg==='Salud.png'?'selected':''}>💪 Salud.png</option>
-    <option value="hobbies.png" ${m.visionImg==='hobbies.png'?'selected':''}>🎨 hobbies.png</option>
-    <option value="Logros.png" ${m.visionImg==='Logros.png'?'selected':''}>🏆 Logros.png</option>
+    <option value="familia.png" ${m.visionImg==='familia.png'?'selected':''}>👨‍👩‍👧 familia</option>
+    <option value="trabajo.png" ${m.visionImg==='trabajo.png'?'selected':''}>💼 trabajo</option>
+    <option value="viajes_.png" ${m.visionImg==='viajes_.png'?'selected':''}>🏍️ viajes</option>
+    <option value="Salud.png" ${m.visionImg==='Salud.png'?'selected':''}>💪 Salud</option>
+    <option value="hobbies.png" ${m.visionImg==='hobbies.png'?'selected':''}>🎨 hobbies</option>
+    <option value="Logros.png" ${m.visionImg==='Logros.png'?'selected':''}>🏆 Logros</option>
   `;
   return `
 <div class="mcard ${isDone?'done':''} ${isEditing?'editing':''} ${m.fixed?'fixed-mission':''}" id="mc-${m.id}">
@@ -255,7 +254,7 @@ function renderMissionCard(m, fromDaily){
         <span class="mtype">${ico}</span>
         <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:${freqCol};color:#fff;letter-spacing:1px;font-family:'Orbitron',monospace;">${freqLbl}</span>
         ${m.fixed?'<span class="fixed-badge">FIJA</span>':''}
-        ${m.visionImg?`<span style="font-size:calc(9px * var(--fs-scale));padding:2px 5px;border-radius:3px;background:rgba(167,139,250,0.2);color:#c4b5fd;letter-spacing:1px;">🖼️ ${escH(m.visionImg)}</span>`:''}
+        ${m.visionImg?`<span style="font-size:calc(9px * var(--fs-scale));padding:2px 5px;border-radius:3px;background:rgba(167,139,250,0.2);color:#c4b5fd;letter-spacing:1px;">🖼️ ${escH(m.visionImg.replace(/\.png$/i,''))}</span>`:''}
         <div class="mactions">
           <button class="act-btn edit" onclick="startEditMission('${m.id}',event)">✏</button>
           ${fromDaily
