@@ -166,7 +166,7 @@ function toggleWeekly(missionId){
   // If called from bank with a specific id, find that mission; else use assigned weekly
   const m = missionId ? S.missions.find(x=>x.id===missionId) : getWeeklyMission();
   if(!m) return;
-  const mxp = XPR[m.rank] || 10;
+  const mxp = m.xp || XPR[m.rank] || 10;
   if(m.weeklyDone){
     m.weeklyDone = false;
     m.updatedAt = Date.now();
@@ -215,7 +215,7 @@ function toggleMonthly(missionId){
   // If called from bank with a specific id, find that mission; else use assigned monthly
   const m = missionId ? S.missions.find(x=>x.id===missionId) : getMonthlyMission();
   if(!m) return;
-  const mxp = XPR[m.rank] || 10;
+  const mxp = m.xp || XPR[m.rank] || 10;
   if(m.monthlyDone){
     m.monthlyDone = false;
     m.updatedAt = Date.now();
@@ -323,6 +323,7 @@ function swapDailyMission(id, e){
 
   // Prioridad 1: no asignada hoy y no completada hoy (incluye misiones recién creadas)
   let candidates = S.missions.filter(m =>
+    (m.freq || 'daily') === 'daily' &&
     m.id !== id &&
     !assignedIds.has(m.id) &&
     m.lastDoneDate !== todayISO
@@ -331,15 +332,18 @@ function swapDailyMission(id, e){
   // Prioridad 2: no asignada hoy aunque haya sido completada antes (no hoy)
   if(!candidates.length){
     candidates = S.missions.filter(m =>
+      (m.freq || 'daily') === 'daily' &&
       m.id !== id &&
       !assignedIds.has(m.id)
     );
   }
 
-  // Prioridad 3: cualquier misión del banco no asignada en este momento
-  // (usa todo el banco completo, sin restricción de categoría)
+  // Prioridad 3: cualquier misión diaria del banco no asignada en este momento
   if(!candidates.length){
-    candidates = S.missions.filter(m => m.id !== id);
+    candidates = S.missions.filter(m =>
+      (m.freq || 'daily') === 'daily' &&
+      m.id !== id
+    );
   }
 
   if(!candidates.length){
@@ -650,7 +654,7 @@ function confirmEditItem(){
   it.cost=cost;
   const priceRaw2=document.getElementById('ei-price').value.trim();
   it.price=priceRaw2;
-  it.realPrice=parseFloat(priceRaw2.replace(/[^\d,.]/g,'').replace(',','.')) || 0;
+  it.realPrice=parseInt(priceRaw2.replace(/[^\d]/g,''), 10) || 0;
   it.rar=document.getElementById('ei-rar').value;
   save(); renderWithFlash(); notif('◈ OBJETO ACTUALIZADO ◈'); closeModal();
 }
@@ -734,6 +738,7 @@ function addMission(){
   save();
   switchTab('missions'); // primero cambia el tab
   renderWithFlash();     // luego renderiza ya con el tab activo
+  toggleAllQuests(true); // abrir banco para que la misión nueva sea visible
   notif('▸ MISIÓN AÑADIDA: '+n);
 }
 
@@ -742,8 +747,8 @@ function addItem(){
   const c=parseInt(document.getElementById('iCostInp').value);
   if(!n||!c||c<1){notif('▸ COMPLETA NOMBRE Y COSTO EN XP');return;}
   const priceRaw = document.getElementById('iPriceInp').value.trim();
-  // Parse numeric value from price string (strip non-digits except dots/commas)
-  const priceNum = parseFloat(priceRaw.replace(/[^\d,.]/g,'').replace(',','.')) || 0;
+  // Parse numeric value from price string (strip all non-digits → integer pesos, consistent with formatCOP)
+  const priceNum = parseInt(priceRaw.replace(/[^\d]/g,''), 10) || 0;
   const it={
     id:'i'+S.nIid++, name:n,
     ico:document.getElementById('iIcoInp').value.trim()||'🎁',
@@ -1025,6 +1030,7 @@ function loadVisionBoardMissions(){
   save();
   switchTab('missions');
   renderWithFlash();
+  toggleAllQuests(true); // abrir banco para que las misiones nuevas sean visibles
   notif('🖼️ ' + added.length + ' MISIONES CARGADAS DESDE VISION BOARD ◈');
 }
 

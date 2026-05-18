@@ -61,13 +61,14 @@ function render(){
     renderMonthlyMission();
   }
   // ── Renders condicionales por tab activo ──
-  const activeTab = S.activeTab || 'missions';
   if(activeTab === 'missions')   renderAllQuests();
   if(activeTab === 'shop')       renderShop();
   if(activeTab === 'inventory')  renderInventory();
   if(activeTab === 'perfil')     renderPerfil();
   if(activeTab === 'dinero')     renderFinTab();
   if(activeTab === 'config')     renderAchievEditor();
+  if(activeTab === 'biblioteca') renderBiblioteca();
+  if(activeTab === 'datos')      renderDatosTab();
   // ── Mood siempre visible en el tab de misiones ──
   renderMoodWidget();
 }
