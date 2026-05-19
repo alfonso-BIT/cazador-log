@@ -111,6 +111,30 @@ function applyMobileTypography(userHasSavedFont){
 // ═══════════════════════════════════════════════════════
 // TABS
 // ═══════════════════════════════════════════════════════
+function toggleCfgSection(sectionId, hdr){
+  const body = document.getElementById(sectionId);
+  if(!body) return;
+  const isOpen = body.style.display === 'block';
+
+  // Close ALL accordion bodies in config tab first
+  document.querySelectorAll('#tab-config .cfg-acrd-body').forEach(b => {
+    b.style.display = 'none';
+  });
+  document.querySelectorAll('#tab-config .cfg-acrd-hdr').forEach(h => {
+    h.classList.remove('open');
+    const arr = h.querySelector('.cfg-acrd-arrow');
+    if(arr) arr.style.transform = 'rotate(0deg)';
+  });
+
+  // If it was closed, now open it
+  if(!isOpen){
+    body.style.display = 'block';
+    if(hdr){ hdr.classList.add('open'); }
+    const arrow = hdr ? hdr.querySelector('.cfg-acrd-arrow') : null;
+    if(arrow) arrow.style.transform = 'rotate(90deg)';
+  }
+}
+
 function switchTab(tab){
   // redirect legacy 'allquests' calls → open missions + expand bank
   if(tab === 'allquests'){ switchTab('missions'); toggleAllQuests(true); return; }

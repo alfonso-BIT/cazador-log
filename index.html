@@ -167,15 +167,6 @@
       <div class="sline"></div>
       <span class="stitle">◈ MISIONES FIJAS HOY</span>
       <div class="sline"></div>
-      <div style="display:flex;gap:7px;margin-left:10px;flex-shrink:0;">
-        <button onclick="openTplModal('import')" title="Cargar misiones desde plantilla" style="padding:4px 10px;background:rgba(0,170,255,0.12);border:1px solid rgba(0,170,255,0.35);color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(8px * var(--fs-scale));letter-spacing:1px;cursor:pointer;border-radius:3px;white-space:nowrap;">📋 PLANTILLAS</button>
-        <button onclick="switchTab('config')" title="Crear nueva misión" style="padding:4px 10px;background:rgba(0,255,140,0.10);border:1px solid rgba(0,255,140,0.30);color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(8px * var(--fs-scale));letter-spacing:1px;cursor:pointer;border-radius:3px;white-space:nowrap;">✚ CREAR</button>
-      </div>
-    </div>
-    <div class="tip-block">
-      <span class="tip-base">4 misiones mínimas de hoy, una por categoría.</span>
-      <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>
-      <div class="tip-detail">El sistema elige automáticamente 1 misión de cada categoría principal (Salud, Guerrero, Estudio, Hábitos). Si tienes muchas misiones creadas, las rota para que no se repitan. Completa las 4 para reclamar la recompensa diaria y mantener tu racha. Usa el botón 🔀 en cualquier misión para cambiarla por una aleatoria de todo el banco — así las misiones recién creadas también pueden aparecer.</div>
     </div>
     <div id="mlist"></div>
     <div class="progtxt" id="progtxt">0 / 4 misiones mínimas completadas</div>
@@ -396,8 +387,14 @@
 
 
 
-    <div class="shdr"><div class="sline"></div><span class="stitle">◈ <span class="txt-short">AÑADIR MISIÓN</span><span class="txt-full">AÑADIR MISIÓN AL BANCO</span></span><div class="sline"></div></div>
-    <div class="aform">
+    <!-- ACORDEÓN: AÑADIR MISIÓN -->
+    <div class="cfg-acrd">
+      <div class="cfg-acrd-hdr open" onclick="toggleCfgSection('cfgMisionForm',this)" data-section="cfgMisionForm">
+        <span class="cfg-acrd-ico">⚔</span>
+        <span class="cfg-acrd-lbl"><span class="txt-short">AÑADIR MISIÓN</span><span class="txt-full">AÑADIR MISIÓN AL BANCO</span></span>
+        <span class="cfg-acrd-arrow" style="transform:rotate(90deg)">›</span>
+      </div>
+      <div class="cfg-acrd-body" id="cfgMisionForm" style="display:block;">
       <button class="tpl-open-cfg-btn" onclick="openTplModal('import')">📋 CARGAR MISIONES DESDE PLANTILLA</button>
       <button class="tpl-open-tut-btn" onclick="openTplModal('tutorial')">📖 VER TUTORIAL DE MISIONES</button>
       <div class="tip-block">
@@ -470,10 +467,17 @@
         </select>
       </div>
       <button class="fabtn" style="margin-top:10px" onclick="addMission()">+ AÑADIR MISIÓN</button>
-    </div>
+      </div><!-- /cfg-acrd-body -->
+    </div><!-- /cfg-acrd -->
 
-    <div class="shdr"><div class="sline"></div><span class="stitle">◈ AÑADIR OBJETO A LA TIENDA</span><div class="sline"></div></div>
-    <div class="aform">
+    <!-- ACORDEÓN: TIENDA -->
+    <div class="cfg-acrd">
+      <div class="cfg-acrd-hdr" onclick="toggleCfgSection('cfgTiendaForm',this)" data-section="cfgTiendaForm">
+        <span class="cfg-acrd-ico">🛒</span>
+        <span class="cfg-acrd-lbl">AÑADIR OBJETO A LA TIENDA</span>
+        <span class="cfg-acrd-arrow">›</span>
+      </div>
+      <div class="cfg-acrd-body" id="cfgTiendaForm" style="display:none;">
       <div class="frow">
         <label class="flbl">Nombre del objeto</label>
         <input class="finput" id="iNameInp" placeholder="Ej: Audífonos Sony WH-1000XM5">
@@ -512,10 +516,17 @@
         </select>
       </div>
       <button class="fabtn gold" onclick="addItem()">+ AÑADIR A LA TIENDA</button>
-    </div>
+      </div><!-- /cfg-acrd-body -->
+    </div><!-- /cfg-acrd -->
 
-    <div class="shdr"><div class="sline"></div><span class="stitle">◈ COLCHÓN DE SEGURIDAD</span><div class="sline"></div></div>
-    <div class="aform">
+    <!-- ACORDEÓN: COLCHÓN DE SEGURIDAD -->
+    <div class="cfg-acrd">
+      <div class="cfg-acrd-hdr" onclick="toggleCfgSection('cfgColchonForm',this)" data-section="cfgColchonForm">
+        <span class="cfg-acrd-ico">🪙</span>
+        <span class="cfg-acrd-lbl">COLCHÓN DE SEGURIDAD</span>
+        <span class="cfg-acrd-arrow">›</span>
+      </div>
+      <div class="cfg-acrd-body" id="cfgColchonForm" style="display:none;">
       <div class="tip-block">
         <span class="tip-base">Define un monto mínimo de dinero que siempre debes conservar.</span>
         <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>
@@ -527,10 +538,17 @@
       </div>
       <div id="minBalStatus" style="font-size:calc(10px * var(--fs-scale));margin-top:6px;padding:7px 10px;background:rgba(0,10,25,0.7);border:1px solid rgba(0,100,200,0.18);display:none;"></div>
       <button class="fabtn gold" style="margin-top:8px;" onclick="saveMinBalance()"><span class="txt-short">✓ GUARDAR TOPE</span><span class="txt-full">GUARDAR TOPE MÍNIMO</span></button>
-    </div>
+      </div><!-- /cfg-acrd-body -->
+    </div><!-- /cfg-acrd -->
 
-    <div class="shdr"><div class="sline"></div><span class="stitle">◈ LOGROS PERSONALIZADOS</span><div class="sline"></div></div>
-    <div class="aform">
+    <!-- ACORDEÓN: LOGROS PERSONALIZADOS -->
+    <div class="cfg-acrd">
+      <div class="cfg-acrd-hdr" onclick="toggleCfgSection('cfgLogrosForm',this)" data-section="cfgLogrosForm">
+        <span class="cfg-acrd-ico">🏆</span>
+        <span class="cfg-acrd-lbl">LOGROS PERSONALIZADOS</span>
+        <span class="cfg-acrd-arrow">›</span>
+      </div>
+      <div class="cfg-acrd-body" id="cfgLogrosForm" style="display:none;">
       <div class="tip-block">
         <span class="tip-base">Crea y edita tus logros con condiciones personalizadas.</span>
         <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿QUÉ SON LOS LOGROS?</button>
@@ -547,13 +565,19 @@
       <input type="hidden" id="aTargetInp" value="1">
       <button class="fabtn" style="margin-bottom:10px;width:100%;" onclick="S.achievements=defaultAchievements();save();renderAchievEditor();notif('LOGROS RESTAURADOS');">↺ RESTAURAR LOGROS ORIGINALES</button>
       <div id="achievEditor" style="margin-top:4px;"></div>
-    </div>
+      </div><!-- /cfg-acrd-body -->
+    </div><!-- /cfg-acrd -->
 
-
-
-    <div class="shdr"><div class="sline"></div><span class="stitle">◈ PERFIL DE CAZADOR</span><div class="sline"></div></div>
-    <button class="fabtn" onclick="toggleNameForm()" id="nameToggleBtn"><span class="txt-short">✏ NOMBRE</span><span class="txt-full">✏ CAMBIAR NOMBRE</span></button>
-    <div class="aform" id="nameFormBox" style="display:none;margin-top:8px;">
+    <!-- ACORDEÓN: PERFIL DE CAZADOR -->
+    <div class="cfg-acrd">
+      <div class="cfg-acrd-hdr" onclick="toggleCfgSection('cfgPerfilForm',this)" data-section="cfgPerfilForm">
+        <span class="cfg-acrd-ico">👤</span>
+        <span class="cfg-acrd-lbl">PERFIL DE CAZADOR</span>
+        <span class="cfg-acrd-arrow">›</span>
+      </div>
+      <div class="cfg-acrd-body" id="cfgPerfilForm" style="display:none;">
+        <button class="fabtn" onclick="toggleNameForm()" id="nameToggleBtn"><span class="txt-short">✏ NOMBRE</span><span class="txt-full">✏ CAMBIAR NOMBRE</span></button>
+        <div class="aform" id="nameFormBox" style="display:none;margin-top:8px;">
       <div class="frow">
         <label class="flbl">Nombre visible en pantalla</label>
         <input class="finput" id="nameInp" placeholder="Ej: SUNG JIN-WOO" onkeydown="if(event.key==='Enter')saveName()">
@@ -562,10 +586,18 @@
         <button class="fabtn" style="flex:1" onclick="saveName()">✓ GUARDAR NOMBRE</button>
         <button class="fabtn" style="flex:1;border-color:rgba(0,100,200,0.3);color:var(--muted);" onclick="toggleNameForm()">✕ CANCELAR</button>
       </div>
-    </div>
+        </div><!-- /nameFormBox -->
+      </div><!-- /cfg-acrd-body -->
+    </div><!-- /cfg-acrd -->
 
-    <div class="shdr"><div class="sline"></div><span class="stitle">◈ <span class="txt-short">RANGOS XP</span><span class="txt-full">CONFIGURAR RANGOS (XP)</span></span><div class="sline"></div></div>
-    <div class="aform">
+    <!-- ACORDEÓN: CONFIGURAR RANGOS -->
+    <div class="cfg-acrd">
+      <div class="cfg-acrd-hdr" onclick="toggleCfgSection('cfgRangosForm',this)" data-section="cfgRangosForm">
+        <span class="cfg-acrd-ico">◈</span>
+        <span class="cfg-acrd-lbl"><span class="txt-short">RANGOS XP</span><span class="txt-full">CONFIGURAR RANGOS (XP)</span></span>
+        <span class="cfg-acrd-arrow">›</span>
+      </div>
+      <div class="cfg-acrd-body" id="cfgRangosForm" style="display:none;">
       <div class="tip-block">
         <span class="tip-base">Ajusta cuánto XP otorga cada rango de misión.</span>
         <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿QUÉ ES CADA RANGO?</button>
@@ -579,14 +611,18 @@
         <div class="rank-box"><div class="rank-box-lbl" style="color:var(--s)">S</div><input class="rank-inp" id="xp-S" type="number" min="1"></div>
       </div>
       <button class="fabtn" style="margin-top:10px" onclick="saveRanks()"><span class="txt-short">✓ GUARDAR</span><span class="txt-full">GUARDAR RANGOS</span></button>
-    </div>
+      </div><!-- /cfg-acrd-body -->
+    </div><!-- /cfg-acrd -->
 
-        <div class="shdr"><div class="sline"></div><span class="stitle">◈ ZONA DE PELIGRO</span><div class="sline"></div></div>
-    <button class="fabtn red" style="width:100%" onclick="resetAll()">⚠ REINICIAR TODO EL SISTEMA</button>
-    <div class="tip-block" style="text-align:center;margin-top:8px;">
-      <span class="tip-base" style="font-size:calc(10px * var(--fs-scale));">Esto borrará todo tu progreso permanentemente.</span>
-      <button class="tip-toggle" onclick="tipToggle(this)">ⓘ QUÉ SE BORRA</button>
-      <div class="tip-detail" style="text-align:left;">Se eliminan: misiones, XP, nivel, racha, logros, objetos de tienda e inventario, transacciones de dinero y todas las estadísticas. <strong style="color:var(--danger)">Esta acción no se puede deshacer.</strong> Solo afecta al usuario actualmente activo en este navegador.</div>
+    <!-- ZONA DE PELIGRO -->
+    <div class="cfg-danger-zone">
+      <div class="cfg-danger-zone-label">◈ ZONA DE PELIGRO</div>
+      <button class="fabtn red" style="width:100%" onclick="resetAll()">⚠ REINICIAR TODO EL SISTEMA</button>
+      <div class="tip-block" style="text-align:center;margin-top:8px;">
+        <span class="tip-base" style="font-size:calc(10px * var(--fs-scale));">Esto borrará todo tu progreso permanentemente.</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ QUÉ SE BORRA</button>
+        <div class="tip-detail" style="text-align:left;">Se eliminan: misiones, XP, nivel, racha, logros, objetos de tienda e inventario, transacciones de dinero y todas las estadísticas. <strong style="color:var(--danger)">Esta acción no se puede deshacer.</strong> Solo afecta al usuario actualmente activo en este navegador.</div>
+      </div>
     </div>
   </div>
 

@@ -217,3 +217,76 @@ button[id="finNavNext"]:disabled{opacity:0.25;cursor:default;}
 .bk-btn.purple{border-color:rgba(192,132,252,0.5);color:#c084fc;}
 .bk-btn.purple:hover{background:rgba(192,132,252,0.08);text-shadow:0 0 8px rgba(192,132,252,0.4);}
 .bk-footer{text-align:center;font-family:'Orbitron',monospace;font-size:9px;color:rgba(96,130,180,0.45);letter-spacing:2px;padding:16px 0 8px;border-top:1px solid rgba(0,100,200,0.1);margin-top:8px;}
+
+/* ── LOGROS EN CUADROS (estilo lib-achiev) ─────────────────────────────── */
+.achiev-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 8px;
+  margin-top: 6px;
+}
+.achiev-card {
+  background: rgba(0,12,30,0.9);
+  border: 1px solid rgba(0,100,200,0.2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  text-align: center;
+  transition: border-color .15s;
+}
+.achiev-card:hover { border-color: rgba(0,170,255,0.5); }
+.achiev-card.done {
+  border-color: rgba(240,192,64,0.5);
+  background: rgba(0,15,40,0.95);
+}
+.achiev-card-ico {
+  font-size: 22px;
+  filter: grayscale(1) opacity(.4);
+  transition: filter .3s;
+}
+.achiev-card.done .achiev-card-ico { filter: none; }
+.achiev-card-name {
+  font-size: calc(9px * var(--fs-scale));
+  font-weight: 700;
+  color: var(--muted);
+  line-height: 1.2;
+}
+.achiev-card.done .achiev-card-name { color: var(--bright); }
+.achiev-card-desc {
+  font-size: calc(8px * var(--fs-scale));
+  color: var(--muted);
+  line-height: 1.3;
+  margin-bottom: 2px;
+  opacity: .7;
+}
+.achiev-card-pbar {
+  width: 100%;
+  height: 2px;
+  background: rgba(0,50,100,0.4);
+  margin-top: 2px;
+}
+.achiev-card-pfill {
+  height: 100%;
+  background: var(--gold);
+  transition: width .6s;
+}
+.achiev-card.done .achiev-card-pfill { background: var(--green); }
+.achiev-card-prog {
+  font-size: calc(8px * var(--fs-scale));
+  color: var(--muted);
+}
+.achiev-card.done .achiev-card-prog { color: var(--green); }
+.achiev-expand-btn {
+  background: transparent;
+  border: 1px solid rgba(0,170,255,0.3);
+  color: var(--blue);
+  font-size: calc(9px * var(--fs-scale));
+  padding: 3px 10px;
+  cursor: pointer;
+  font-family: 'Orbitron', monospace;
+  letter-spacing: 1px;
+  transition: border-color .15s, color .15s;
+}
+.achiev-expand-btn:hover { border-color: var(--blue); color: var(--bright); }

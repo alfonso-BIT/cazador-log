@@ -99,31 +99,53 @@ let _lastAvatarCat = null; // Para detectar cambio de categoría dominante
 let _avatarCatInitialized = false; // FIX-BUG-AVATARCAT: evita notif espuria en el primer render tras recarga
 
 
+let _achievExpanded = false;
+
+function _buildAchievCard(a){
+  const done = evalAchievement(a);
+  const prog = getAchievProgress(a);
+  const pct  = a.type==='custom' ? (done?100:0) : Math.min(100,Math.round((prog.cur/prog.max)*100));
+  const clickAttr = a.type==='custom'
+    ? `onclick="toggleCustomAchiev('${escH(a.id)}')" style="cursor:pointer;"`
+    : '';
+  return `<div class="achiev-card${done?' done':''}" ${clickAttr}>
+    <div class="achiev-card-ico">${done?(a.ico||'⭐'):'🔒'}</div>
+    <div class="achiev-card-name">${escH(a.name)}</div>
+    <div class="achiev-card-desc">${escH(a.desc)}</div>
+    <div class="achiev-card-pbar"><div class="achiev-card-pfill" style="width:${pct}%"></div></div>
+    <div class="achiev-card-prog">${a.type==='custom'?(done?'✓ LOGRADO':'● MARCAR'):(prog.cur+'/'+prog.max)}</div>
+  </div>`;
+}
+
 function renderAchievements(){
   const el = document.getElementById('achievList'); if(!el) return;
   if(!S.achievements||!S.achievements.length){
     el.innerHTML='<div style="text-align:center;color:var(--muted);padding:16px;font-size:11px;">Sin logros configurados. Añade en CONFIGURAR.</div>';
     return;
   }
-  el.innerHTML = S.achievements.map(a=>{
-    const done = evalAchievement(a);
-    const prog = getAchievProgress(a);
-    const pct = a.type==='custom' ? (done?100:0) : Math.min(100,Math.round((prog.cur/prog.max)*100));
-    // FIX-BUG-CUSTOM: los logros manuales tienen badge clicable para marcar/desmarcar.
-    // Los automáticos conservan su badge de solo lectura (comportamiento original).
-    const badgeHtml = a.type==='custom'
-      ? `<div class="achiev-badge ${done?'done':'pend'}" style="cursor:pointer;user-select:none;" title="Clic para marcar/desmarcar" onclick="toggleCustomAchiev('${escH(a.id)}')">${done?'✓ LOGRADO':'● MARCAR'}</div>`
-      : `<div class="achiev-badge ${done?'done':'pend'}">${done?'✓ LOGRADO':'PENDIENTE'}</div>`;
-    return `<div class="achiev-row">
-      <div class="achiev-ico">${a.ico||'⭐'}</div>
-      <div class="achiev-txt">
-        <div class="achiev-name" style="color:${done?'var(--bright)':'var(--muted)'}">${escH(a.name)}</div>
-        <div class="achiev-desc">${escH(a.desc)}</div>
-        ${a.type!=='custom'?`<div style="margin-top:4px;height:3px;background:rgba(0,100,200,0.12);border:1px solid rgba(0,100,200,0.15);"><div style="height:100%;width:${pct}%;background:${done?'var(--gold)':'var(--blue)'};transition:width .6s;"></div></div><div style="font-size:9px;color:var(--muted);text-align:right;margin-top:2px;">${prog.cur} / ${prog.max}</div>`:'' }
-      </div>
-      ${badgeHtml}
-    </div>`;
-  }).join('');
+  const all      = S.achievements;
+  const total    = all.length;
+  const unlocked = all.filter(a=>evalAchievement(a)).length;
+  const doneList = all.filter(a=>evalAchievement(a));
+  let show3;
+  if(doneList.length>0){
+    show3 = doneList.slice(-3);
+  } else {
+    show3 = [...all].sort((a,b)=>{
+      const pa=getAchievProgress(a), pb=getAchievProgress(b);
+      return (pb.cur/pb.max)-(pa.cur/pa.max);
+    }).slice(0,3);
+  }
+  const visibleList = _achievExpanded ? all : show3;
+  const hidden = total - show3.length;
+  el.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+      <span style="font-size:calc(10px * var(--fs-scale));color:var(--muted);">${unlocked} / ${total} desbloqueados</span>
+      ${hidden>0||_achievExpanded?`<button class="achiev-expand-btn" onclick="_achievExpanded=!_achievExpanded;renderAchievements()">${_achievExpanded?'− Ocultar':'+ Ver todos ('+total+')'}</button>`:''}
+    </div>
+    <div class="achiev-card-grid">${visibleList.map(_buildAchievCard).join('')}</div>
+    ${!_achievExpanded&&doneList.length===0?'<div style="text-align:center;color:var(--muted);font-size:calc(9px * var(--fs-scale));padding:4px 0 8px;">Estos son tus próximos logros por desbloquear 🎯</div>':''}
+  `;
 }
 
 // FIX-BUG-CUSTOM: toggle manual para logros de tipo 'custom'.

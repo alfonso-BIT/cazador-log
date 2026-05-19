@@ -1014,7 +1014,7 @@ function _libRenderCatManager(){
   const resetBtn = key => `<button onclick="libCatReset('${key}')" title="Restaurar original"
     style="background:none;border:1px solid rgba(0,170,255,0.2);color:rgba(0,170,255,0.5);
     border-radius:3px;padding:5px 9px;cursor:pointer;font-size:11px;transition:all .15s;flex-shrink:0;"
-    onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='rgba(0,170,255,0.5)'">↺</button>`;
+    onmouseover="this.style.color='var(--blue)'" onmouseout="this.style.color='rgba(0,170,255,0.5)'">✕</button>`;
   const delBtn   = key => `<button onclick="libDeleteCustomCat('${key}')" title="Eliminar"
     style="background:none;border:1px solid rgba(255,68,102,0.25);color:rgba(255,68,102,0.5);
     border-radius:3px;padding:5px 9px;cursor:pointer;font-size:11px;transition:all .15s;flex-shrink:0;"

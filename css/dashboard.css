@@ -326,3 +326,109 @@
   border-color: var(--blue);
   box-shadow: 0 0 10px rgba(0,170,255,0.2);
 }
+
+/* ── CFG ACCORDION ─────────────────────────────────────────────────────── */
+.cfg-acrd {
+  margin-bottom: 6px;
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.cfg-acrd-hdr {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  min-height: 52px;
+  background: rgba(0,8,20,0.85);
+  border: 1px solid rgba(0,100,200,0.15);
+  cursor: pointer;
+  user-select: none;
+  transition: background .2s, border-color .2s;
+  position: relative;
+}
+
+.cfg-acrd-hdr:hover {
+  background: rgba(0,20,50,0.9);
+  border-color: rgba(0,140,255,0.35);
+}
+
+.cfg-acrd-hdr.open {
+  background: rgba(0,15,40,0.95);
+  border-color: rgba(0,140,255,0.45);
+  border-bottom-color: transparent;
+}
+
+.cfg-acrd-ico {
+  font-size: 20px;
+  flex-shrink: 0;
+  width: 28px;
+  text-align: center;
+}
+
+.cfg-acrd-lbl {
+  flex: 1;
+  font-family: 'Orbitron', 'Rajdhani', sans-serif;
+  font-size: calc(11px * var(--fs-scale));
+  letter-spacing: 2px;
+  color: var(--fg);
+  text-transform: uppercase;
+}
+
+.cfg-acrd-arrow {
+  font-size: 18px;
+  color: var(--blue);
+  flex-shrink: 0;
+  transition: transform .25s ease;
+  line-height: 1;
+}
+
+.cfg-acrd-hdr.open .cfg-acrd-arrow {
+  transform: rotate(90deg);
+}
+
+/* danger header variant */
+.cfg-acrd-hdr.danger-hdr {
+  border-color: rgba(200,30,30,0.35);
+}
+.cfg-acrd-hdr.danger-hdr:hover {
+  background: rgba(40,5,5,0.9);
+  border-color: rgba(220,50,50,0.55);
+}
+.cfg-acrd-hdr.danger-hdr .cfg-acrd-lbl {
+  color: #ff4444;
+}
+.cfg-acrd-hdr.danger-hdr .cfg-acrd-arrow {
+  color: #ff4444;
+}
+
+.cfg-acrd-body {
+  display: none;
+  background: rgba(0,8,20,0.7);
+  border: 1px solid rgba(0,140,255,0.2);
+  border-top: none;
+  padding: 14px;
+}
+
+.cfg-acrd-body .aform {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-bottom: 0;
+}
+
+/* danger zone standalone */
+.cfg-danger-zone {
+  margin-top: 20px;
+  border-top: 1px solid rgba(200,30,30,0.25);
+  padding-top: 16px;
+}
+
+.cfg-danger-zone-label {
+  text-align: center;
+  font-family: 'Orbitron', sans-serif;
+  font-size: calc(10px * var(--fs-scale));
+  letter-spacing: 3px;
+  color: #ff4444;
+  margin-bottom: 12px;
+}
