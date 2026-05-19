@@ -144,17 +144,7 @@ function getTodayKey(){
 
 function assignDailyMissions(){
   const todayKey = getTodayKey();
-  // FIX-BUG-DAILY-IDS: si la key coincide pero alguno de los IDs asignados ya no existe
-  // en S.missions (ej: tras importar un backup), forzar reasignación para que las misiones
-  // del día vuelvan a aparecer en el tab de misiones.
-  if(S.dailyAssigned && S.dailyAssigned.key === todayKey){
-    const allExist = Array.isArray(S.dailyAssigned.ids) &&
-                     S.dailyAssigned.ids.length > 0 &&
-                     S.dailyAssigned.ids.every(id => S.missions.some(m => m.id === id));
-    if(allExist) return;
-    // Algún ID ya no existe → borrar la asignación y reasignar
-    S.dailyAssigned = null;
-  }
+  if(S.dailyAssigned && S.dailyAssigned.key === todayKey) return;
 
   // ── Fecha de ayer en ISO local (para excluir misiones ya usadas ayer) ──
   const todayISO = getTodayISODate();
