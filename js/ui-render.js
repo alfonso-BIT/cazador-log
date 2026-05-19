@@ -40,6 +40,12 @@ function render(){
   if(shopXPEl) shopXPEl.textContent = S.shopXP || 0;
   const shopTotalEl = document.getElementById('shopTotalXPDisplay');
   if(shopTotalEl) shopTotalEl.textContent = S.totalXP;
+  // ── Fondo de Deseos (50/30/20) en tienda y dinero ──
+  const deseosFund = S.deseosFund || 0;
+  const sdfBar = document.getElementById('shopDeseosFundBar');
+  const sdfVal = document.getElementById('shopDeseosFundVal');
+  if(sdfBar) sdfBar.style.display = deseosFund > 0 ? 'flex' : 'none';
+  if(sdfVal) sdfVal.textContent = (typeof formatCOP === 'function') ? formatCOP(deseosFund) : '$'+deseosFund;
   // ── Config inputs ──
   ['D','C','B','A','S'].forEach(r=>{
     const el=document.getElementById('xp-'+r);

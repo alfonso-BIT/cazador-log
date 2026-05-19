@@ -503,7 +503,11 @@ function renderItemCard(it, isShop){
 // Calcula el balance real acumulado (todos los movimientos, sin filtro de período)
 function getTotalBalance(){
   if(!S||!S.transactions) return 0;
-  return S.transactions.reduce((s,t)=> t.type==='income' ? s+t.amt : s-t.amt, 0);
+  return S.transactions.reduce((s,t)=> {
+    if(t.type==='income') return s + t.amt;
+    if(t.type==='expense') return s - t.amt;
+    return s; // income_split y otros no afectan el balance real
+  }, 0);
 }
 
 function openRedeem(id){
@@ -522,9 +526,21 @@ function openRedeem(id){
   pendingId=id;
   document.getElementById('modT').textContent='◈ COMPRAR OBJETO';
 
+  const deseosFund = S.deseosFund || 0;
+  const dblocked = deseosFund > 0 && itemPrice > 0 && itemPrice > deseosFund;
+
   let balanceInfo = '';
+  if(deseosFund > 0){
+    balanceInfo += `<div style="margin-top:10px;padding:8px 10px;background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.35);font-size:11px;line-height:1.8;">
+      <div style="color:#a78bfa;letter-spacing:1px;font-size:9px;font-family:'Orbitron',monospace;margin-bottom:4px;">🎮 FONDO DE DESEOS (50/30/20)</div>
+      <div>Disponible para compras: <span style="color:#a78bfa;font-family:'Orbitron',monospace;">${formatCOP(deseosFund)}</span></div>
+      ${itemPrice>0?`<div>Precio real del objeto: <span style="color:${itemPrice<=deseosFund?'var(--green)':'var(--danger)'};font-family:'Orbitron',monospace;">${formatCOP(itemPrice)}</span></div>`:''}
+      ${itemPrice>0&&itemPrice<=deseosFund?`<div style="color:var(--green);font-size:10px;">✓ Tienes suficiente en tu fondo</div>`:''}
+      ${dblocked?`<div style="color:var(--danger);font-size:10px;">⚠ El precio supera tu fondo de deseos</div>`:''}
+    </div>`;
+  }
   if(minBal > 0){
-    balanceInfo = `<div style="margin-top:10px;padding:8px 10px;background:rgba(0,10,25,0.8);border:1px solid rgba(0,100,200,0.2);font-size:11px;line-height:1.8;">
+    balanceInfo += `<div style="margin-top:10px;padding:8px 10px;background:rgba(0,10,25,0.8);border:1px solid rgba(0,100,200,0.2);font-size:11px;line-height:1.8;">
       <div style="color:var(--muted);letter-spacing:1px;font-size:9px;font-family:'Orbitron',monospace;margin-bottom:4px;">◈ COLCHÓN DE SEGURIDAD</div>
       <div>Balance actual: <span style="color:${totalBal>=0?'var(--green)':'var(--danger)'};font-family:'Orbitron',monospace;">${formatCOP(totalBal)}</span></div>
       <div>Tope mínimo: <span style="color:var(--gold);font-family:'Orbitron',monospace;">${formatCOP(minBal)}</span></div>
@@ -541,9 +557,10 @@ function openRedeem(id){
     +`<div style="font-size:11px;color:var(--blue);margin-top:4px;letter-spacing:1px;">▸ Tu nivel (LV.${S.lvl}) y barra de XP no cambiarán.</div>`
     +balanceInfo
     +(blocked ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,30,60,0.07);border:1px solid rgba(255,30,60,0.35);border-left:3px solid var(--danger);color:#ff8899;font-size:11px;letter-spacing:1px;">⚠ Tu balance total (${formatCOP(totalBal)}) está en el tope mínimo o por debajo. No puedes comprar hasta superar el colchón de ${formatCOP(minBal)}.</div>` : '')
-    +(blockedAfter && !blocked ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,30,60,0.07);border:1px solid rgba(255,30,60,0.35);border-left:3px solid var(--danger);color:#ff8899;font-size:11px;letter-spacing:1px;">⚠ Esta compra dejaría tu balance por debajo del colchón de ${formatCOP(minBal)}. Necesitas más dinero disponible.</div>` : '');
+    +(blockedAfter && !blocked ? `<div style="margin-top:10px;padding:8px 10px;background:rgba(255,30,60,0.07);border:1px solid rgba(255,30,60,0.35);border-left:3px solid var(--danger);color:#ff8899;font-size:11px;letter-spacing:1px;">⚠ Esta compra dejaría tu balance por debajo del colchón de ${formatCOP(minBal)}. Necesitas más dinero disponible.</div>` : '')
+    +(dblocked ? `<div style="margin-top:6px;padding:8px 10px;background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.4);border-left:3px solid #a78bfa;color:#c4b5fd;font-size:11px;letter-spacing:1px;">🎮 El precio real supera tu fondo de Deseos (${formatCOP(deseosFund)}). Acumula más ingresos para habilitar esta compra.</div>` : '');
 
-  const canBuy = !blocked && !blockedAfter;
+  const canBuy = !blocked && !blockedAfter && !dblocked;
   document.getElementById('modActs').innerHTML=`
 <button class="mbtn ok" ${canBuy?'':'disabled style="opacity:.35;cursor:not-allowed"'} onclick="${canBuy?'confirmRedeem()':'void(0)'}">CONFIRMAR</button>
 <button class="mbtn no" onclick="closeModal()">CANCELAR</button>`;
@@ -583,6 +600,10 @@ function confirmRedeem(){
 
   // Descontar de shopXP ÚNICAMENTE — totalXP, lvl, curXP y nextXP no se tocan
   S.shopXP = Math.max(0, (S.shopXP||0) - it.cost);
+  // Descontar del fondo de Deseos (50/30/20) si hay precio real y hay fondo
+  if(it.realPrice > 0 && S.deseosFund > 0){
+    S.deseosFund = Math.max(0, (S.deseosFund||0) - it.realPrice);
+  }
   it.red = true;
   it.redDate = new Date().toLocaleDateString('es-CO',{year:'numeric',month:'2-digit',day:'2-digit'});
   it.updatedAt  = Date.now();

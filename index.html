@@ -287,7 +287,7 @@
       <div class="tip-detail">Cada misión que completas gana <strong style="color:var(--gold)">XP de Tienda</strong> además del XP de nivel normal. El XP de Tienda es tu moneda de compra — al canjear un objeto se descuenta de aquí, <strong style="color:var(--blue)">no de tu nivel ni de tu barra de XP</strong>. Así nunca puedes bajar de nivel por comprar. Si tienes un Colchón de Seguridad configurado, también se valida tu balance real antes de permitir la compra.</div>
     </div>
     <!-- XP de Tienda disponible -->
-    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(240,192,64,0.07);border:1px solid rgba(240,192,64,0.28);border-left:3px solid var(--gold);padding:10px 14px;margin-bottom:12px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;background:rgba(240,192,64,0.07);border:1px solid rgba(240,192,64,0.28);border-left:3px solid var(--gold);padding:10px 14px;margin-bottom:8px;">
       <div>
         <div style="font-family:'Orbitron',monospace;font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:3px;">◈ XP DE TIENDA DISPONIBLE</div>
         <div style="font-family:'Orbitron',monospace;font-size:20px;font-weight:700;color:var(--gold);" id="shopXPDisplay">0</div>
@@ -296,6 +296,17 @@
         <div style="font-size:calc(10px * var(--fs-scale));color:var(--muted);">XP de nivel: <span style="color:var(--bright);font-family:'Orbitron',monospace;font-size:calc(12px * var(--fs-scale));" id="shopTotalXPDisplay">0</span></div>
         <div style="font-size:calc(9px * var(--fs-scale));color:rgba(0,170,255,0.7);letter-spacing:0.5px;">El nivel no cambia al comprar</div>
       </div>
+    </div>
+    <!-- Fondo de Deseos 50/30/20 en Tienda -->
+    <div id="shopDeseosFundBar" style="display:none;align-items:center;justify-content:space-between;background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.3);border-left:3px solid #a78bfa;padding:8px 14px;margin-bottom:12px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:16px;">🎮</span>
+        <div>
+          <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:#a78bfa;">FONDO DE DESEOS</div>
+          <div style="font-size:9px;color:var(--muted);letter-spacing:1px;">Saldo disponible (bloque 30% del ingreso)</div>
+        </div>
+      </div>
+      <div style="font-family:'Orbitron',monospace;font-size:16px;font-weight:700;color:#a78bfa;" id="shopDeseosFundVal">$0</div>
     </div>
     <!-- Selector de periodo global para la tienda -->
     <div style="display:flex;gap:0;margin-bottom:14px;border:1px solid rgba(0,170,255,0.25);">
@@ -554,15 +565,44 @@
         <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿QUÉ SON LOS LOGROS?</button>
         <div class="tip-detail">Los logros son metas que se desbloquean automáticamente cuando cumples la condición (nivel, racha, XP total, misiones completadas…). Puedes elegir el ícono, nombre y descripción. Los cambios se reflejan en la pestaña <strong style="color:var(--blue)">PERFIL</strong>. El tipo "Manual" lo marcas tú mismo cuando lo logres.</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-        <input class="finput" id="aNameInp" placeholder="Nombre del logro..." style="flex:1;margin:0;">
-        <button class="fabtn gold" style="margin:0;white-space:nowrap;flex-shrink:0;" onclick="addAchiev()">+ AÑADIR</button>
+      <!-- FORMULARIO COMPLETO DE NUEVO LOGRO -->
+      <div style="background:rgba(0,20,50,0.6);border:1px solid rgba(0,100,200,0.25);padding:12px;margin-bottom:10px;">
+        <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--blue);margin-bottom:10px;">◈ NUEVO LOGRO</div>
+        <div style="display:flex;gap:8px;margin-bottom:8px;">
+          <div style="flex-shrink:0;width:54px;">
+            <label class="flbl">ICONO</label>
+            <input id="aIcoInp" value="⭐" maxlength="4" placeholder="⭐"
+              style="background:rgba(0,10,30,0.9);border:1px solid rgba(0,100,200,0.25);color:var(--bright);padding:6px 2px;font-size:20px;text-align:center;width:100%;outline:none;">
+          </div>
+          <div style="flex:1;">
+            <label class="flbl">NOMBRE *</label>
+            <input class="finput" id="aNameInp" placeholder="Nombre del logro..." style="margin:0;width:100%;box-sizing:border-box;">
+          </div>
+        </div>
+        <div style="margin-bottom:8px;">
+          <label class="flbl">DESCRIPCIÓN</label>
+          <input class="finput" id="aDescInp" placeholder="Descripción del logro..." style="margin:0;width:100%;box-sizing:border-box;">
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <div style="flex:1;">
+            <label class="flbl">CONDICIÓN</label>
+            <select class="fselect" id="aTypeInp" onchange="aTypeChange(this.value)" style="margin:0;">
+              <option value="totalComp">Total misiones completadas</option>
+              <option value="streak">Racha de días</option>
+              <option value="level">Nivel alcanzado</option>
+              <option value="totalXP">XP total acumulado</option>
+              <option value="catMax">Categoría dominante</option>
+              <option value="redeem">Canjes realizados</option>
+              <option value="custom" selected>Manual (lo marcas tú)</option>
+            </select>
+          </div>
+          <div id="aTargetRow" style="flex:0 0 90px;display:none;">
+            <label class="flbl">META</label>
+            <input class="finput" id="aTargetInp" type="number" value="10" min="1" placeholder="10" style="margin:0;width:100%;box-sizing:border-box;">
+          </div>
+        </div>
+        <button class="fabtn gold" style="width:100%;margin:0;" onclick="addAchiev()">+ AÑADIR LOGRO</button>
       </div>
-      <!-- campos ocultos con defaults — addAchiev() los lee -->
-      <input type="hidden" id="aDescInp" value="">
-      <input type="hidden" id="aIcoInp" value="⭐">
-      <input type="hidden" id="aTypeInp" value="custom">
-      <input type="hidden" id="aTargetInp" value="1">
       <button class="fabtn" style="margin-bottom:10px;width:100%;" onclick="S.achievements=defaultAchievements();save();renderAchievEditor();notif('LOGROS RESTAURADOS');">↺ RESTAURAR LOGROS ORIGINALES</button>
       <div id="achievEditor" style="margin-top:4px;"></div>
       </div><!-- /cfg-acrd-body -->
@@ -659,6 +699,17 @@
         <div class="fin-box-lbl">BALANCE</div>
       </div>
     </div>
+    <!-- Fondo de Deseos (50/30/20) — solo visible si hay saldo -->
+    <div id="deseosFundBar" style="display:none;background:rgba(167,139,250,0.07);border:1px solid rgba(167,139,250,0.3);border-left:3px solid #a78bfa;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:18px;">🎮</span>
+        <div>
+          <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:#a78bfa;">FONDO DE DESEOS</div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;">Disponible para compras en tienda</div>
+        </div>
+      </div>
+      <div style="font-family:'Orbitron',monospace;font-size:16px;font-weight:700;color:#a78bfa;" id="deseosFundVal">$0</div>
+    </div>
 
     <!-- Bar chart by day -->
     <div class="fin-chart-wrap">
@@ -686,7 +737,7 @@
       <div class="fgrid" style="margin-bottom:10px;">
         <div class="frow" style="margin-bottom:0;">
           <label class="flbl">Monto ($)</label>
-          <input type="number" class="finput" id="finAmt" placeholder="Ej: 15000" min="1" onkeydown="if(event.key==='Enter')addTransaction()">
+          <input type="number" class="finput" id="finAmt" placeholder="Ej: 15000" min="1" oninput="if(finType==='income')updateSplitBars()" onkeydown="if(event.key==='Enter')addTransaction()">
         </div>
         <div class="frow" style="margin-bottom:0;">
           <label class="flbl">Emoji</label>
@@ -703,7 +754,8 @@
           </div>
         </div>
       </div>
-      <div class="frow">
+      <!-- PANEL GASTO: categorías -->
+      <div class="frow" id="expenseCatRow">
         <label class="flbl">Categoría de gasto</label>
         <div class="fin-cat-grid" id="finCatGrid">
           <div class="fin-cat-btn sel" data-cat="comida" onclick="selectFinCat(this)">🍔<br>Comida</div>
@@ -716,6 +768,90 @@
           <div class="fin-cat-btn" data-cat="otro" onclick="selectFinCat(this)">📦<br>Otro</div>
         </div>
       </div>
+
+      <!-- PANEL INGRESO: distribución 50/30/20 flexible -->
+      <div id="incomeSplitPanel" style="display:none;">
+
+        <!-- Toggle explicativo -->
+        <div class="tip-block" style="margin-bottom:10px;">
+          <span class="tip-base">Distribución automática de tu ingreso.</span>
+          <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿QUÉ ES EL MÉTODO 50/30/20?</button>
+          <div class="tip-detail" style="text-align:left;">
+            <strong style="color:var(--blue);">Regla 50/30/20</strong> — popularizada por Elizabeth Warren, divide tu ingreso neto en 3 bloques:<br><br>
+            🏠 <strong style="color:#facc15;">NECESIDADES (50%)</strong> — gastos esenciales: vivienda, alimentación, transporte, servicios públicos, deudas básicas.<br><br>
+            🎮 <strong style="color:#a78bfa;">DESEOS (30%)</strong> — gastos personales no esenciales: ocio, entretenimiento, salidas, suscripciones.<br><br>
+            💰 <strong style="color:#4ade80;">AHORRO (20%)</strong> — fondo de emergencia, metas financieras, inversión o pago de deudas.<br><br>
+            <em style="color:var(--muted);">Los porcentajes son flexibles — ajústalos a tu realidad. Solo deben sumar 100%.</em>
+          </div>
+        </div>
+
+        <!-- Sliders de distribución -->
+        <div style="background:rgba(0,20,50,0.6);border:1px solid rgba(0,100,200,0.25);padding:12px;margin-bottom:10px;">
+          <div style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:3px;color:var(--blue);margin-bottom:12px;display:flex;justify-content:space-between;align-items:center;">
+            <span>◈ DISTRIBUCIÓN DEL INGRESO</span>
+            <span id="splitSumWarn" style="font-size:8px;color:var(--danger);display:none;">⚠ SUMA ≠ 100%</span>
+          </div>
+
+          <!-- Barra visual de distribución -->
+          <div id="splitBarVis" style="height:10px;border-radius:2px;overflow:hidden;display:flex;margin-bottom:14px;gap:2px;">
+            <div id="splitBar1" style="background:#facc15;transition:width .3s;"></div>
+            <div id="splitBar2" style="background:#a78bfa;transition:width .3s;"></div>
+            <div id="splitBar3" style="background:#4ade80;transition:width .3s;"></div>
+          </div>
+
+          <!-- Bloque 1: Necesidades -->
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:16px;">🏠</span>
+                <input id="splitLbl1" value="Necesidades" style="background:none;border:none;border-bottom:1px solid rgba(250,204,21,0.4);color:#facc15;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;width:100px;outline:none;padding:1px 2px;">
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <input id="splitPct1" type="number" value="50" min="0" max="100" oninput="updateSplitBars()" style="background:rgba(0,10,30,0.9);border:1px solid rgba(250,204,21,0.4);color:#facc15;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;width:52px;text-align:center;padding:3px 4px;outline:none;">
+                <span style="color:#facc15;font-family:'Orbitron',monospace;font-size:11px;">%</span>
+              </div>
+            </div>
+            <div id="splitAmt1" style="font-family:'Orbitron',monospace;font-size:11px;color:#facc15;text-align:right;opacity:0.7;">$0</div>
+          </div>
+
+          <!-- Bloque 2: Deseos -->
+          <div style="margin-bottom:10px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:16px;">🎮</span>
+                <input id="splitLbl2" value="Deseos" style="background:none;border:none;border-bottom:1px solid rgba(167,139,250,0.4);color:#a78bfa;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;width:100px;outline:none;padding:1px 2px;">
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <input id="splitPct2" type="number" value="30" min="0" max="100" oninput="updateSplitBars()" style="background:rgba(0,10,30,0.9);border:1px solid rgba(167,139,250,0.4);color:#a78bfa;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;width:52px;text-align:center;padding:3px 4px;outline:none;">
+                <span style="color:#a78bfa;font-family:'Orbitron',monospace;font-size:11px;">%</span>
+              </div>
+            </div>
+            <div id="splitAmt2" style="font-family:'Orbitron',monospace;font-size:11px;color:#a78bfa;text-align:right;opacity:0.7;">$0</div>
+          </div>
+
+          <!-- Bloque 3: Ahorro -->
+          <div style="margin-bottom:6px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+              <div style="display:flex;align-items:center;gap:6px;">
+                <span style="font-size:16px;">💰</span>
+                <input id="splitLbl3" value="Ahorro" style="background:none;border:none;border-bottom:1px solid rgba(74,222,128,0.4);color:#4ade80;font-family:'Orbitron',monospace;font-size:9px;letter-spacing:1px;width:100px;outline:none;padding:1px 2px;">
+              </div>
+              <div style="display:flex;align-items:center;gap:4px;">
+                <input id="splitPct3" type="number" value="20" min="0" max="100" oninput="updateSplitBars()" style="background:rgba(0,10,30,0.9);border:1px solid rgba(74,222,128,0.4);color:#4ade80;font-family:'Orbitron',monospace;font-size:13px;font-weight:700;width:52px;text-align:center;padding:3px 4px;outline:none;">
+                <span style="color:#4ade80;font-family:'Orbitron',monospace;font-size:11px;">%</span>
+              </div>
+            </div>
+            <div id="splitAmt3" style="font-family:'Orbitron',monospace;font-size:11px;color:#4ade80;text-align:right;opacity:0.7;">$0</div>
+          </div>
+        </div>
+
+        <!-- Checkbox para activar/desactivar split -->
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+          <input type="checkbox" id="splitEnabled" checked onchange="updateSplitBars()" style="width:15px;height:15px;accent-color:var(--blue);cursor:pointer;">
+          <label for="splitEnabled" style="font-family:'Orbitron',monospace;font-size:9px;color:var(--muted);letter-spacing:1px;cursor:pointer;">DISTRIBUIR AUTOMÁTICAMENTE AL REGISTRAR</label>
+        </div>
+      </div>
+
       <button class="fabtn" id="finAddBtn" onclick="addTransaction()" style="border-color:rgba(255,68,102,0.5);color:#ff6688;">+ REGISTRAR GASTO</button>
     </div>
 

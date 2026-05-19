@@ -137,7 +137,7 @@ html,body{min-height:100vh;background:#020810;color:#c8e6ff;font-family:'Rajdhan
 
 /* ── TABS ────────────────────────────────────────────── */
 .tabs{display:flex;border-bottom:1px solid rgba(0,100,200,0.22);margin-bottom:12px;width:100%;}
-.tab{flex:1;text-align:center;padding:9px 4px;font-family:'Orbitron',monospace;font-size:calc(9px * var(--fs-scale));letter-spacing:2px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tab{flex:1;text-align:center;padding:14px 8px;font-family:'Orbitron',monospace;font-size:calc(13px * var(--fs-scale));letter-spacing:2px;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;background:none;border-top:none;border-left:none;border-right:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 .tab.active{color:var(--neon-purple);border-bottom-color:var(--neon-purple);text-shadow:0 0 10px var(--neon-purple-glow);}
 .tab:hover:not(.active){color:#8bb8d0;}
 .tabcontent{display:none;}
