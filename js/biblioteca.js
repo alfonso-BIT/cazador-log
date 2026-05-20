@@ -452,7 +452,9 @@ function renderBiblioteca(){
   const stats    = libStats();
   const books    = libFiltered();
   const reading  = S.books.filter(b=>b.status==='reading');
-  const currentBook = reading.length ? reading[0] : null;
+  // Prioriza el libro del mes si está siendo leído; si no, el primero en lectura
+  const bomReading = S.bookOfMonth ? reading.find(b=>b.id===S.bookOfMonth) : null;
+  const currentBook = bomReading || (reading.length ? reading[0] : null);
 
   el.innerHTML = `
     <!-- Estadísticas rápidas -->
@@ -1240,6 +1242,8 @@ function libQuickProgress(id, delta){
   if(!b) return;
   const prevProg = b.progress||0;
   b.progress = Math.min(100, prevProg+delta);
+  // Sincronizar currentPage con el nuevo progreso
+  if(b.pages) b.currentPage = Math.round(b.pages * b.progress / 100);
   // XP por hitos de progreso
   [[25,50],[50,100],[75,150]].forEach(([milestone, xp])=>{
     if(prevProg < milestone && b.progress >= milestone){
