@@ -97,6 +97,10 @@ function restoreSessionUI(){
     const el = document.getElementById('sp-'+x);
     if(el) el.classList.toggle('active', x===shopPeriod);
   });
+  ['day','week','month','year'].forEach(x=>{
+    const el = document.getElementById('fp-'+x);
+    if(el) el.classList.toggle('active', x===finPeriod);
+  });
   const ptW = document.getElementById('pt-week');
   const ptM = document.getElementById('pt-month');
   if(ptW) ptW.classList.toggle('active', currentPeriod==='week');

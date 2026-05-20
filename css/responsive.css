@@ -26,11 +26,11 @@
 .tabcontent .rh-val{font-size:calc(14px * var(--fs-scale));}
 .tabcontent .pentext{font-size:calc(12px * var(--fs-scale));}
 .tabcontent .pentitle{font-size:calc(9px * var(--fs-scale));}
-.tabcontent .mname{font-size:calc(15px * var(--fs-scale));}
-.tabcontent .mdesc{font-size:calc(11px * var(--fs-scale));}
-.tabcontent .mxp{font-size:calc(11px * var(--fs-scale));}
-.tabcontent .mrnk{font-size:calc(10px * var(--fs-scale));}
-.tabcontent .mtype{font-size:calc(9px * var(--fs-scale));}
+.tabcontent .mname{font-size:calc(19px * var(--fs-scale));}
+.tabcontent .mdesc{font-size:calc(16px * var(--fs-scale));}
+.tabcontent .mxp{font-size:calc(13px * var(--fs-scale));}
+.tabcontent .mrnk{font-size:calc(12px * var(--fs-scale));}
+.tabcontent .mtype{font-size:calc(12px * var(--fs-scale));}
 .tabcontent .act-btn{font-size:calc(10px * var(--fs-scale));}
 .tabcontent .progtxt{font-size:calc(11px * var(--fs-scale));}
 .tabcontent .claimbtn{font-size:calc(11px * var(--fs-scale));}
@@ -199,8 +199,8 @@
 .rcd{font-size:16px;}
 .rh-val{font-size:14px;}
 .mcard{padding:10px 11px;}
-.mname{font-size:14px;}
-.mdesc{font-size:10px;}
+.mname{font-size:19px;}
+.mdesc{font-size:16px;}
 .mfoot{gap:5px;}
 .mxp{font-size:10px;padding:2px 6px;}
 .mrnk{font-size:9px;padding:2px 6px;}
@@ -315,8 +315,8 @@
   .resetbar>div:last-child{align-self:auto;}
   .rcd{font-size:14px;}
   .mcard{padding:12px 14px;}
-  .mname{font-size:15px;}
-  .mdesc{font-size:11px;}
+  .mname{font-size:19px;}
+  .mdesc{font-size:16px;}
   .claimbtn{font-size:11px;letter-spacing:4px;padding:13px;}
   .mood-face{font-size:28px;}
   .mood-btn{padding:10px 14px;min-width:56px;}
@@ -517,6 +517,20 @@
 
   /* ── Inputs — 16px fijo previene zoom automático en iOS/Android ── */
   .finput, .fselect { font-size: var(--mob-input, 16px) !important; }
+
+  /* ── Badges de misión compactos en móvil ── */
+  /* Ocultar texto completo y mostrar versión corta via data-short */
+  .mxp, .mrnk, .mfreq, .fixed-badge, .mvis, .mbonus {
+    font-size: 0 !important;
+    padding: 2px 5px !important;
+    letter-spacing: 0 !important;
+  }
+  .mxp::before    { content: attr(data-short); font-size: 14px; font-family: 'Orbitron', monospace; font-weight: 700; letter-spacing: 0.5px; }
+  .mrnk::before   { content: attr(data-short); font-size: 14px; font-family: 'Orbitron', monospace; font-weight: 700; letter-spacing: 0.5px; }
+  .mfreq::before  { content: attr(data-short); font-size: 14px; font-family: sans-serif; }
+  .fixed-badge::before { content: attr(data-short); font-size: 14px; font-family: 'Orbitron', monospace; font-weight: 700; color: var(--gold); }
+  .mvis::before   { content: attr(data-short); font-size: 14px; font-family: sans-serif; }
+  .mbonus { display: none !important; }
 }
 
 /* ── TAP TARGETS MÍNIMOS — 44×44px (Apple HIG / WCAG) ── */

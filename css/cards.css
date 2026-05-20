@@ -234,13 +234,36 @@ button[id="finNavNext"]:disabled{opacity:0.25;cursor:default;}
   align-items: center;
   gap: 4px;
   text-align: center;
-  transition: border-color .15s;
+  transition: border-color .2s, background .2s, transform .15s, box-shadow .2s;
+  position: relative;
 }
-.achiev-card:hover { border-color: rgba(0,170,255,0.5); }
+.achiev-card::after {
+  content: '▶';
+  position: absolute;
+  bottom: 5px;
+  right: 7px;
+  font-size: 7px;
+  color: rgba(0,170,255,0.35);
+  font-family: 'Orbitron', monospace;
+  transition: color .2s;
+}
+.achiev-card:hover {
+  border-color: rgba(0,170,255,0.6);
+  background: rgba(0,20,50,0.97);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(0,100,255,0.15);
+}
+.achiev-card:hover::after { color: rgba(0,170,255,0.8); }
 .achiev-card.done {
   border-color: rgba(240,192,64,0.5);
   background: rgba(0,15,40,0.95);
 }
+.achiev-card.done:hover {
+  border-color: rgba(240,192,64,0.85);
+  box-shadow: 0 4px 18px rgba(240,192,64,0.18);
+}
+.achiev-card.done::after { color: rgba(240,192,64,0.4); }
+.achiev-card.done:hover::after { color: rgba(240,192,64,0.85); }
 .achiev-card-ico {
   font-size: 22px;
   filter: grayscale(1) opacity(.4);

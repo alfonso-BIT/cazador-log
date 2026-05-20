@@ -18,6 +18,80 @@ let finType   = 'expense';
 let finCat    = 'comida';
 let finOffset = 0;   // 0 = período actual, -1 = período anterior, etc.
 
+// ── Fondo de Deseos — cálculo real con cascada 50/30/20 ─────────────────
+// Lógica correcta: los gastos consumen primero el presupuesto de Necesidades
+// (50%), luego el de Deseos (30%) y por último el de Ahorro (20%).
+// Si ya se gastó todo lo de Necesidades + Deseos, el fondo de Deseos = 0.
+// Usa _calcWaterfall que implementa exactamente esa cascada.
+// Nota: _calcWaterfall se define más abajo en este archivo; como ambas funciones
+// se usan en tiempo de ejecución (no en carga), el orden de declaración no importa.
+function getDeseosFundReal(txs){
+  if(!txs || !txs.length) return 0;
+  // Verificar que hay splits de deseos; si no hay ingreso distribuido, devolver 0
+  const hasDeseosSplit = txs.some(t => t.type === 'income_split' && t.cat === 'deseos');
+  if(!hasDeseosSplit) return 0;
+  const wf = _calcWaterfall(txs);
+  return Math.max(0, wf.real.deseos);
+}
+
+// ── Porcentaje real de deseos sobre ingresos con distribución ────────────
+// Devuelve el % que representa la suma de income_split deseos
+// sobre el total de ingresos que tuvieron distribución activa.
+function getDeseosPct(txs){
+  if(!txs || !txs.length) return 0;
+  const parentIds = new Set(
+    txs.filter(t => t.type === 'income_split').map(t => t.parentId)
+  );
+  const totalSplit = txs
+    .filter(t => t.type === 'income' && parentIds.has(t.id))
+    .reduce((s, t) => s + (t.amt || 0), 0);
+  const inDeseos = txs
+    .filter(t => t.type === 'income_split' && t.cat === 'deseos')
+    .reduce((s, t) => s + (t.amt || 0), 0);
+  return totalSplit > 0 ? Math.round(inDeseos / totalSplit * 100) : 0;
+}
+
+// ── Banner reutilizable del Fondo de Deseos ──────────────────────────────
+// Renderiza el banner informativo en cualquier contenedor pasado por ID.
+// Si no hay fondo de deseos configurado, oculta el contenedor.
+function renderDeseosBanner(containerId){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  if(!S || !S.transactions) { el.style.display = 'none'; return; }
+
+  const fund = getDeseosFundReal(S.transactions); // ya usa waterfall
+  const pct  = getDeseosPct(S.transactions);
+
+  if(pct === 0){ el.style.display = 'none'; return; }
+
+  // Para la barra usamos: fondo = totalAsignado a deseos, fill = real restante
+  const wf = _calcWaterfall(S.transactions);
+  const totalAsignado = wf.allocated.deseos || 0;
+  const barFill = totalAsignado > 0
+    ? Math.max(0, Math.round(fund / totalAsignado * 100))
+    : 0;
+  const barCol = barFill > 50 ? '#a78bfa' : barFill > 20 ? '#7c3aed' : 'var(--danger)';
+
+  el.style.display = 'flex';
+  const fundColor   = fund <= 0 ? 'var(--danger)' : '#a78bfa';
+  const fundLabel   = fund <= 0 ? '⚠ AGOTADO' : 'Disponible';
+  el.innerHTML = `
+    <div style="font-size:20px;flex-shrink:0;">🎮</div>
+    <div style="flex:1;min-width:0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;">
+        <span style="font-family:'Orbitron',monospace;font-size:9px;letter-spacing:2px;color:#a78bfa;">DESEOS</span>
+        <span style="font-family:'Orbitron',monospace;font-size:9px;color:var(--muted);">${pct}%</span>
+      </div>
+      <div style="height:4px;background:rgba(255,255,255,0.07);border-radius:2px;overflow:hidden;margin-bottom:4px;">
+        <div style="height:100%;width:${barFill}%;background:${barCol};border-radius:2px;transition:width .4s;"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <span style="font-size:9px;color:${fundColor};letter-spacing:1px;">${fundLabel}</span>
+        <span style="font-family:'Orbitron',monospace;font-size:13px;font-weight:700;color:${fundColor};">${formatCOP(fund)}</span>
+      </div>
+    </div>`;
+}
+
 // ── Cálculo de ahorro real usando cascada necesidades→deseos→ahorro ───────
 // Los gastos "consumen" primero el presupuesto de Necesidades, luego Deseos,
 // y por último el de Ahorro. Devuelve {necesidades, deseos, ahorro} con el
@@ -27,18 +101,59 @@ function _calcWaterfall(txs){
   txs.filter(t=>t.type==='income_split').forEach(t=>{
     if(allocated[t.cat] !== undefined) allocated[t.cat] += t.amt;
   });
-  const totalExp = txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amt,0);
-  // Cascada: 1) necesidades 2) deseos 3) ahorro
-  let remaining = totalExp;
+
+  // ── Paso 1: gastos directos por categoría (incluyendo autoShop en deseos) ──
+  // Cada gasto se imputa primero al cubo de su propia categoría si aplica.
+  const CAT_MAP = {
+    // gastos de necesidades → cubo necesidades
+    comida:'necesidades', transporte:'necesidades', salud:'necesidades',
+    hogar:'necesidades', educacion:'necesidades',
+    // gastos de deseos → cubo deseos (incluye compras de tienda autoShop)
+    ocio:'deseos', compras:'deseos', deseos:'deseos',
+    // ahorro no suele tener gastos, pero si los hay van a ahorro
+    ahorro:'ahorro'
+  };
   const spent = {necesidades:0, deseos:0, ahorro:0};
-  for(const bucket of ['necesidades','deseos','ahorro']){
-    if(remaining <= 0) break;
-    const use = Math.min(remaining, allocated[bucket]);
-    spent[bucket] = use;
-    remaining -= use;
-    // Si remaining aún > 0 pasamos al siguiente (sobre-gasto en ese bucket)
-    if(remaining > 0) spent[bucket] = allocated[bucket]; // consumido entero
+  let unassigned = 0; // gastos en categorías no mapeadas (cat:'otro', etc.)
+
+  txs.filter(t=>t.type==='expense').forEach(t=>{
+    const bucket = CAT_MAP[t.cat];
+    if(bucket){
+      spent[bucket] += t.amt;
+    } else {
+      unassigned += t.amt; // se distribuirá en cascada abajo
+    }
+  });
+
+  // ── Paso 2: gastos "otro" se distribuyen en cascada necesidades→deseos→ahorro ──
+  // (por si hay gastos no categorizados)
+  if(unassigned > 0){
+    for(const bucket of ['necesidades','deseos','ahorro']){
+      if(unassigned <= 0) break;
+      const headroom = Math.max(0, allocated[bucket] - spent[bucket]);
+      const use = Math.min(unassigned, headroom > 0 ? headroom : unassigned);
+      spent[bucket] += use;
+      unassigned -= use;
+    }
   }
+
+  // ── Paso 3: si un cubo está sobre-gastado, el exceso pasa al siguiente ──
+  // Ejemplo: si deseos gastó más de lo asignado, el exceso se descuenta de ahorro.
+  let overflow = 0;
+  const ORDER = ['necesidades','deseos','ahorro'];
+  for(let i = 0; i < ORDER.length; i++){
+    const bucket = ORDER[i];
+    const excess = spent[bucket] - allocated[bucket];
+    if(excess > 0){
+      spent[bucket] = allocated[bucket]; // cap al asignado
+      if(i + 1 < ORDER.length){
+        spent[ORDER[i+1]] += excess; // derrama al siguiente
+      } else {
+        overflow += excess;
+      }
+    }
+  }
+
   return {
     allocated,
     spent,
@@ -47,7 +162,7 @@ function _calcWaterfall(txs){
       deseos:      allocated.deseos      - spent.deseos,
       ahorro:      allocated.ahorro      - spent.ahorro,
     },
-    overflow: Math.max(0, remaining) // gasto mayor que todos los cubos
+    overflow: Math.max(0, overflow)
   };
 }
 
@@ -75,6 +190,60 @@ function formatCOP(n){
   // Siempre valor exacto, sin abreviaciones K/M — requisito de precisión
   const abs = Math.abs(Math.round(n));
   return (n < 0 ? '-$' : '$') + abs.toLocaleString('es-CO');
+}
+
+// ── Formateador del campo de monto — muestra puntos de miles en tiempo real ──
+// Convierte "400000" → "400.000" mientras el usuario escribe,
+// garantizando que el valor siempre sean pesos enteros.
+function formatFinAmtInput(input){
+  const raw = input.value.replace(/[^\d]/g, ''); // solo dígitos
+  if(!raw){ input.value = ''; return; }
+  const num = parseInt(raw, 10);
+  // Formatear con puntos de miles (es-CO usa punto como separador de miles)
+  input.value = num.toLocaleString('es-CO');
+  // Mover cursor al final
+  const len = input.value.length;
+  try{ input.setSelectionRange(len, len); }catch(e){}
+}
+
+// ── Corrección automática de splits con error de redondeo ───────────────
+// Detecta income_split cuyos montos no suman exactamente el income parent
+// y los recalcula garantizando suma exacta. Se llama al cargar el módulo.
+function fixSplitRounding(){
+  if(!S || !S.transactions || !S.transactions.length) return;
+  const txs = S.transactions;
+
+  // Agrupar splits por parentId
+  const parents = {};
+  txs.forEach(t => {
+    if(t.type === 'income' && t.isSplit) parents[t.id] = { income: t, splits: [] };
+  });
+  txs.forEach(t => {
+    if(t.type === 'income_split' && t.parentId && parents[t.parentId]) {
+      parents[t.parentId].splits.push(t);
+    }
+  });
+
+  let changed = false;
+  Object.values(parents).forEach(({ income, splits }) => {
+    if(!splits.length) return;
+    const totalAmt  = income.amt;
+    const splitSum  = splits.reduce((s, t) => s + (t.amt || 0), 0);
+    const diff      = totalAmt - splitSum;
+
+    // Solo corregir si hay diferencia (error de redondeo) ≤ 10 pesos
+    if(diff !== 0 && Math.abs(diff) <= 10){
+      // Agregar la diferencia al último split
+      splits[splits.length - 1].amt += diff;
+      // Sincronizar deseosFund si el split corregido es de deseos
+      if(splits[splits.length - 1].cat === 'deseos'){
+        S.deseosFund = (S.deseosFund || 0) + diff;
+      }
+      changed = true;
+    }
+  });
+
+  if(changed){ save(); }
 }
 
 function setFinPeriod(p){
@@ -180,7 +349,7 @@ function setFinType(t){
 }
 
 function updateSplitBars(){
-  const amt = parseFloat(document.getElementById('finAmt')?.value) || 0;
+  const amt = parseInt((document.getElementById('finAmt')?.value||'').replace(/[^\d]/g,''), 10) || 0;
   const p1  = parseInt(document.getElementById('splitPct1')?.value) || 0;
   const p2  = parseInt(document.getElementById('splitPct2')?.value) || 0;
   const p3  = parseInt(document.getElementById('splitPct3')?.value) || 0;
@@ -215,7 +384,7 @@ function selectFinCat(el){
 
 function addTransaction(){
   const desc = (document.getElementById('finDesc').value||'').trim();
-  const amt  = parseFloat(document.getElementById('finAmt').value);
+  const amt  = parseInt((document.getElementById('finAmt').value||'').replace(/[^\d]/g,''), 10);
   const ico  = (document.getElementById('finIco').value||'').trim();
   if(!desc){ notif('▸ INGRESA UNA DESCRIPCIÓN'); return; }
   if(!amt||amt<=0){ notif('▸ INGRESA UN MONTO VÁLIDO'); return; }
@@ -253,9 +422,16 @@ function addTransaction(){
         { lbl: lbl2, pct: p2, ico: '🎮', cat: 'deseos',       color: '#a78bfa' },
         { lbl: lbl3, pct: p3, ico: '💰', cat: 'ahorro',       color: '#4ade80' },
       ];
-      splits.forEach((s,si) => {
-        if(s.pct <= 0) return;
-        const splitAmt = Math.round(amt * s.pct) / 100;
+      // Calcular splits garantizando que sumen exactamente el monto original
+      const activeSplits = splits.filter(s => s.pct > 0);
+      let sumSoFar = 0;
+      activeSplits.forEach((s, si) => {
+        const isLast = si === activeSplits.length - 1;
+        // Último split absorbe la diferencia de redondeo para sumar exacto
+        const splitAmt = isLast
+          ? amt - sumSoFar
+          : Math.round(amt * s.pct / 100);
+        sumSoFar += splitAmt;
         S.transactions.push({
           id: 't'+S.nTid++,
           desc: `${s.lbl} (${s.pct}%) ← ${desc}`,
@@ -267,8 +443,8 @@ function addTransaction(){
           date: localDate,
           parentId: txMain.id
         });
-        // El bloque de índice 1 (Deseos/segundo bloque) alimenta el fondo de tienda
-        if(si === 1){
+        // El bloque de cat 'deseos' alimenta el fondo de tienda
+        if(s.cat === 'deseos'){
           if(!S.deseosFund) S.deseosFund = 0;
           S.deseosFund += splitAmt;
         }
@@ -372,6 +548,8 @@ function renderFinCatChart(txs){
 
 function renderFinTab(){
   if(!S) return;
+  // Corregir splits con error de redondeo antes de renderizar
+  fixSplitRounding();
   // Restore period preference
   finPeriod = S.finPeriod || 'day';
   ['day','week','month','year'].forEach(x=>{
@@ -413,12 +591,7 @@ function renderFinTab(){
   }
   renderFinTxList(txs);
 
-  // Fondo de Deseos (50/30/20)
-  const deseosFund = S.deseosFund || 0;
-  const dfBar = document.getElementById('deseosFundBar');
-  const dfVal = document.getElementById('deseosFundVal');
-  if(dfBar) dfBar.style.display = deseosFund > 0 ? 'flex' : 'none';
-  if(dfVal) dfVal.textContent = formatCOP(deseosFund);
+  // Banner de Fondo de Deseos — solo en Tienda, no en Dinero
 }
 
 // ── Render único de una fila de transacción ──────────────────────────────

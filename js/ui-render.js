@@ -39,13 +39,7 @@ function render(){
   const shopXPEl = document.getElementById('shopXPDisplay');
   if(shopXPEl) shopXPEl.textContent = S.shopXP || 0;
   const shopTotalEl = document.getElementById('shopTotalXPDisplay');
-  if(shopTotalEl) shopTotalEl.textContent = S.totalXP;
-  // ── Fondo de Deseos (50/30/20) en tienda y dinero ──
-  const deseosFund = S.deseosFund || 0;
-  const sdfBar = document.getElementById('shopDeseosFundBar');
-  const sdfVal = document.getElementById('shopDeseosFundVal');
-  if(sdfBar) sdfBar.style.display = deseosFund > 0 ? 'flex' : 'none';
-  if(sdfVal) sdfVal.textContent = (typeof formatCOP === 'function') ? formatCOP(deseosFund) : '$'+deseosFund;
+  if(shopTotalEl) shopTotalEl.textContent = (S.totalXP >= 1e9 || !isFinite(S.totalXP)) ? '∞' : (S.totalXP || 0);
   // ── Config inputs ──
   ['D','C','B','A','S'].forEach(r=>{
     const el=document.getElementById('xp-'+r);
@@ -75,6 +69,14 @@ function render(){
   if(activeTab === 'config')     renderAchievEditor();
   if(activeTab === 'biblioteca') renderBiblioteca();
   if(activeTab === 'datos')      renderDatosTab();
+  // ── Banner de Fondo de Deseos — solo Tienda ──
+  if(typeof renderDeseosBanner === 'function'){
+    if(activeTab === 'shop'){
+      // Corregir splits con error de redondeo antes de mostrar el banner
+      if(typeof fixSplitRounding === 'function') fixSplitRounding();
+      renderDeseosBanner('deseosBanner-shop');
+    }
+  }
   // ── Mood siempre visible en el tab de misiones ──
   renderMoodWidget();
 }
@@ -167,11 +169,11 @@ function renderWeeklyMission(){
       <div class="mname">${escH(m.name)}</div>
       ${m.desc?`<div class="mdesc">${escH(m.desc)}</div>`:''}
       <div class="mfoot">
-        <span class="mxp">+${xp} XP</span>
-        <span class="mrnk r${m.rank.toLowerCase()}">${m.rank}-RANK</span>
+        <span class="mxp" data-short="+${xp}">+${xp} XP</span>
+        <span class="mrnk r${m.rank.toLowerCase()}" data-short="${m.rank}">${m.rank}-RANK</span>
         <span class="mtype">${ico}</span>
-        <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(251,191,36,0.6);color:#fff;letter-spacing:1px;font-family:'Orbitron',monospace;">📆 Semanal</span>
-        <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(30,30,60,0.7);color:${S.streak>0?'#fbbf24':'#94a3b8'};letter-spacing:1px;font-family:'Orbitron',monospace;" title="Bonus al reclamar">BONUS ${multLbl}</span>
+        <span class="mfreq" data-short="📆S" style="font-size:calc(11px * var(--fs-scale));">📆</span>
+        <span class="mbonus" data-short="B" style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(30,30,60,0.7);color:${S.streak>0?'#fbbf24':'#94a3b8'};letter-spacing:1px;font-family:'Orbitron',monospace;" title="Bonus al reclamar">BONUS ${multLbl}</span>
         <div class="mactions">
           ${done ? '' : '<button class="act-btn swap" onclick="swapWeeklyMission(event)" title=\"🔀 Cambiar misión semanal\">🔀</button>'}
         </div>
@@ -214,11 +216,11 @@ function renderMonthlyMission(){
       <div class="mname">${escH(m.name)}</div>
       ${m.desc?`<div class="mdesc">${escH(m.desc)}</div>`:''}
       <div class="mfoot">
-        <span class="mxp">+${xp} XP</span>
-        <span class="mrnk r${m.rank.toLowerCase()}">${m.rank}-RANK</span>
+        <span class="mxp" data-short="+${xp}">+${xp} XP</span>
+        <span class="mrnk r${m.rank.toLowerCase()}" data-short="${m.rank}">${m.rank}-RANK</span>
         <span class="mtype">${ico}</span>
-        <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(167,139,250,0.6);color:#fff;letter-spacing:1px;font-family:'Orbitron',monospace;">🗓️ Mensual</span>
-        <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(30,30,60,0.7);color:${S.streak>0?'#fbbf24':'#94a3b8'};letter-spacing:1px;font-family:'Orbitron',monospace;" title="Bonus al reclamar">BONUS ${multLbl}</span>
+        <span class="mfreq" data-short="🗓️M" style="font-size:calc(11px * var(--fs-scale));">🗓️</span>
+        <span class="mbonus" data-short="B" style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(30,30,60,0.7);color:${S.streak>0?'#fbbf24':'#94a3b8'};letter-spacing:1px;font-family:'Orbitron',monospace;" title="Bonus al reclamar">BONUS ${multLbl}</span>
         <div class="mactions">
           ${done ? '' : '<button class="act-btn swap" onclick="swapMonthlyMission(event)" title=\"🔀 Cambiar misión mensual\">🔀</button>'}
         </div>
@@ -230,23 +232,17 @@ function renderMonthlyMission(){
 
 function renderMissionCard(m, fromDaily){
   const xp=m.xp||XPR[m.rank]||50;
-  const ico=CAT_LABELS[m.cat]||'⚡';
+  const icoFull=CAT_LABELS[m.cat]||'⚡';
+  // Solo mostrar el emoji (primer segmento antes del espacio) para no sobrecargar la tarjeta
+  const ico=icoFull.split(' ')[0]||icoFull;
   const isEditing=editingMissionId===m.id;
-  const freqLbl = {daily:'🌅 Diaria', weekly:'📆 Semanal', monthly:'🗓️ Mensual'}[m.freq||'daily'] || '🌅 Diaria';
+  const freqLbl = {daily:'🌅', weekly:'📆', monthly:'🗓️'}[m.freq||'daily'] || '🌅';
+  const freqShort = {daily:'🌅D', weekly:'📆S', monthly:'🗓️M'}[m.freq||'daily'] || '🌅D';
   const freqCol = {daily:'rgba(96,165,250,0.6)', weekly:'rgba(251,191,36,0.6)', monthly:'rgba(167,139,250,0.6)'}[m.freq||'daily'] || 'rgba(96,165,250,0.6)';
   // Determine done state and toggle fn based on frequency (for banco view)
   const mFreq = m.freq || 'daily';
   const isDone = mFreq === 'weekly' ? !!m.weeklyDone : mFreq === 'monthly' ? !!m.monthlyDone : !!m.done;
   const toggleFn = mFreq === 'weekly' ? `toggleWeekly('${m.id}')` : mFreq === 'monthly' ? `toggleMonthly('${m.id}')` : `toggle('${m.id}')`;
-  const visionBoardOptions = `
-    <option value="" ${!m.visionImg?'selected':''}>— Sin imagen —</option>
-    <option value="familia.png" ${m.visionImg==='familia.png'?'selected':''}>👨‍👩‍👧 familia</option>
-    <option value="trabajo.png" ${m.visionImg==='trabajo.png'?'selected':''}>💼 trabajo</option>
-    <option value="viajes_.png" ${m.visionImg==='viajes_.png'?'selected':''}>🏍️ viajes</option>
-    <option value="Salud.png" ${m.visionImg==='Salud.png'?'selected':''}>💪 Salud</option>
-    <option value="hobbies.png" ${m.visionImg==='hobbies.png'?'selected':''}>🎨 hobbies</option>
-    <option value="Logros.png" ${m.visionImg==='Logros.png'?'selected':''}>🏆 Logros</option>
-  `;
   return `
 <div class="mcard ${isDone?'done':''} ${isEditing?'editing':''} ${m.fixed?'fixed-mission':''}" id="mc-${m.id}">
   <div class="mtop">
@@ -255,12 +251,11 @@ function renderMissionCard(m, fromDaily){
       <div class="mname">${escH(m.name)}</div>
       ${m.desc?`<div class="mdesc">${escH(m.desc)}</div>`:''}
       <div class="mfoot">
-        <span class="mxp">+${xp} XP</span>
-        <span class="mrnk r${m.rank.toLowerCase()}">${m.rank}-RANK</span>
+        <span class="mxp" data-short="+${xp}">+${xp} XP</span>
+        <span class="mrnk r${m.rank.toLowerCase()}" data-short="${m.rank}">${m.rank}-RANK</span>
         <span class="mtype">${ico}</span>
-        <span style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:${freqCol};color:#fff;letter-spacing:1px;font-family:'Orbitron',monospace;">${freqLbl}</span>
-        ${m.fixed?'<span class="fixed-badge">FIJA</span>':''}
-        ${m.visionImg?`<span style="font-size:calc(9px * var(--fs-scale));padding:2px 5px;border-radius:3px;background:rgba(167,139,250,0.2);color:#c4b5fd;letter-spacing:1px;">🖼️ ${escH(m.visionImg.replace(/\.png$/i,''))}</span>`:''}
+        <span class="mfreq" data-short="${freqShort}" style="font-size:calc(11px * var(--fs-scale));">${freqLbl}</span>
+        ${m.fixed?'<span class="fixed-badge" data-short="F">FIJA</span>':''}
         <div class="mactions">
           <button class="act-btn fav${m.favorite?' fav-on':''}" onclick="toggleFavorite('${m.id}',event)" title="${m.favorite?'Quitar de favoritas':'Marcar como favorita'}">${m.favorite?'★':'☆'}</button>
           <button class="act-btn edit" onclick="startEditMission('${m.id}',event)">✏</button>
@@ -278,7 +273,7 @@ function renderMissionCard(m, fromDaily){
     <div class="ie-grid">
       <div class="ie-row">
         <label class="ie-lbl">Categoría</label>
-        <select class="ie-sel" id="ie-cat-${m.id}" onchange="document.getElementById('ie-vision-row-${m.id}').style.display=this.value==='visionboard'?'flex':'none'">
+        <select class="ie-sel" id="ie-cat-${m.id}">
           <option value="salud" ${m.cat==='salud'?'selected':''}>💪 Salud/Sanador</option>
           <option value="guerrero" ${m.cat==='guerrero'?'selected':''}>⚔️ Guerrero</option>
           <option value="estudio" ${m.cat==='estudio'?'selected':''}>📚 Mago</option>
@@ -318,10 +313,6 @@ function renderMissionCard(m, fromDaily){
         <option value="weekly" ${m.freq==='weekly'?'selected':''}>📆 Semanal</option>
         <option value="monthly" ${m.freq==='monthly'?'selected':''}>🗓️ Mensual</option>
       </select>
-    </div>
-    <div class="ie-row" id="ie-vision-row-${m.id}" style="display:${m.cat==='visionboard'?'flex':'none'}">
-      <label class="ie-lbl">🖼️ Imagen Vision Board</label>
-      <select class="ie-sel" id="ie-vision-${m.id}">${visionBoardOptions}</select>
     </div>
     <div class="ie-btns">
       <button class="ie-btn ok" onclick="saveEditMission('${m.id}')">✓ GUARDAR</button>

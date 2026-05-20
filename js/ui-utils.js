@@ -88,12 +88,12 @@ function applyMobileTypography(userHasSavedFont){
   // --mob-hero: valores grandes (nivel, XP total)
   const root = document.documentElement;
   if(isNarrow || isTouch){
-    root.style.setProperty('--mob-body',  '14px');
-    root.style.setProperty('--mob-label', '12px');
-    root.style.setProperty('--mob-micro', '10px');
+    root.style.setProperty('--mob-body',  '19px');
+    root.style.setProperty('--mob-label', '16px');
+    root.style.setProperty('--mob-micro', '12px');
     root.style.setProperty('--mob-input', '16px');
-    root.style.setProperty('--mob-title', '11px');
-    root.style.setProperty('--mob-hero',  isTiny ? '18px' : '22px');
+    root.style.setProperty('--mob-title', '13px');
+    root.style.setProperty('--mob-hero',  isTiny ? '20px' : '24px');
     document.body.setAttribute('data-mob', isTouch ? 'touch' : 'narrow');
   } else {
     // Desktop/tablet — usar variables neutras que no fuercen nada

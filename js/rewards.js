@@ -105,16 +105,58 @@ function _buildAchievCard(a){
   const done = evalAchievement(a);
   const prog = getAchievProgress(a);
   const pct  = a.type==='custom' ? (done?100:0) : Math.min(100,Math.round((prog.cur/prog.max)*100));
-  const clickAttr = a.type==='custom'
-    ? `onclick="toggleCustomAchiev('${escH(a.id)}')" style="cursor:pointer;"`
-    : '';
-  return `<div class="achiev-card${done?' done':''}" ${clickAttr}>
+  // Todas las cards abren el overlay de detalle al hacer clic
+  const clickFn = a.type==='custom'
+    ? `openAchievDetail('${escH(a.id)}', true)`
+    : `openAchievDetail('${escH(a.id)}', false)`;
+  return `<div class="achiev-card${done?' done':''}" onclick="${clickFn}" style="cursor:pointer;">
     <div class="achiev-card-ico">${done?(a.ico||'⭐'):'🔒'}</div>
     <div class="achiev-card-name">${escH(a.name)}</div>
     <div class="achiev-card-desc">${escH(a.desc)}</div>
     <div class="achiev-card-pbar"><div class="achiev-card-pfill" style="width:${pct}%"></div></div>
     <div class="achiev-card-prog">${a.type==='custom'?(done?'✓ LOGRADO':'● MARCAR'):(prog.cur+'/'+prog.max)}</div>
   </div>`;
+}
+
+// ── Overlay de detalle de logro (igual al efecto de libros) ─────────────
+function openAchievDetail(id, isCustom){
+  if(!S.achievements) return;
+  const a = S.achievements.find(x=>x.id===id);
+  if(!a) return;
+  const done = evalAchievement(a);
+  const prog = getAchievProgress(a);
+  const pct  = isCustom ? (done?100:0) : Math.min(100, Math.round((prog.cur/prog.max)*100));
+  const xpR  = a.target>=50?80:a.target>=20?50:a.target>=10?30:a.target>=5?20:10;
+  const barColor = done ? 'var(--green)' : 'var(--gold)';
+  const progLabel = isCustom
+    ? (done ? '✓ LOGRADO' : '● Pendiente — toca para marcar')
+    : (prog.cur + ' / ' + prog.max);
+
+  let ov = document.getElementById('achiev-profile-overlay');
+  if(!ov){
+    ov = document.createElement('div');
+    ov.id = 'achiev-profile-overlay';
+    ov.style.cssText = 'display:none;position:fixed;inset:0;background:rgba(0,5,15,0.88);z-index:9100;align-items:center;justify-content:center;backdrop-filter:blur(4px);';
+    ov.onclick = e => { if(e.target===ov) ov.style.display='none'; };
+    document.body.appendChild(ov);
+  }
+
+  ov.innerHTML = `
+    <div style="background:rgba(0,12,35,0.98);border:1px solid ${done?'rgba(240,192,64,0.55)':'rgba(0,170,255,0.4)'};padding:32px 28px;max-width:340px;width:90%;display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;animation:fadeInUp .2s ease;">
+      <div style="font-size:56px;line-height:1;">${done?(a.ico||'⭐'):'🔒'}</div>
+      <div style="font-family:'Orbitron',monospace;font-size:calc(14px * var(--fs-scale));font-weight:700;color:${done?'var(--gold)':'var(--bright)'};letter-spacing:2px;">${escH(a.name)}</div>
+      <div style="font-size:calc(12px * var(--fs-scale));color:var(--muted);line-height:1.5;">${escH(a.desc)}</div>
+      <div style="width:100%;height:6px;background:rgba(0,50,100,0.4);border-radius:3px;overflow:hidden;">
+        <div style="height:100%;width:${pct}%;background:${barColor};transition:width .4s ease;border-radius:3px;"></div>
+      </div>
+      <div style="font-size:calc(12px * var(--fs-scale));color:var(--muted);">${progLabel}</div>
+      <div style="font-size:calc(11px * var(--fs-scale));font-family:'Orbitron',monospace;letter-spacing:1px;color:${done?'#f0c040':'var(--muted)'};">
+        ${done?'✓ DESBLOQUEADO · +'+xpR+' XP ganados':'⭐ +'+xpR+' XP al desbloquear'}
+      </div>
+      ${isCustom && !done ? `<button onclick="toggleCustomAchiev('${escH(a.id)}');document.getElementById('achiev-profile-overlay').style.display='none';" style="background:rgba(0,170,255,0.1);border:1px solid rgba(0,170,255,0.4);color:var(--blue);font-family:'Orbitron',monospace;font-size:calc(9px * var(--fs-scale));padding:8px 20px;cursor:pointer;letter-spacing:2px;transition:.15s;">● MARCAR COMO LOGRADO</button>` : ''}
+      <button onclick="document.getElementById('achiev-profile-overlay').style.display='none'" style="background:transparent;border:1px solid rgba(0,170,255,0.3);color:var(--blue);font-family:'Orbitron',monospace;font-size:calc(9px * var(--fs-scale));padding:6px 24px;cursor:pointer;letter-spacing:2px;transition:.15s;">CERRAR</button>
+    </div>`;
+  ov.style.display = 'flex';
 }
 
 function renderAchievements(){
