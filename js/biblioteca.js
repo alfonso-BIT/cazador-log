@@ -850,16 +850,21 @@ function libSyncProgress(src){
   if(!sliderEl||!pctEl) return;
   const totalPages = parseInt(pagesEl?.value)||0;
   if(src==='slider'){
+    // Slider mueve el %, calcula página aproximada pero NO sobreescribe si ya hay una
     const pct = parseInt(sliderEl.value)||0;
     pctEl.textContent = pct+'%';
     if(totalPages>0 && curPageEl)
       curPageEl.value = Math.round(totalPages*pct/100);
   } else if(src==='currentPage'||src==='pages'){
+    // Páginas tienen prioridad: el % se calcula desde la página, se redondea a entero
     const cur = parseInt(curPageEl?.value)||0;
     if(totalPages>0 && cur>0){
       const pct = Math.min(100, Math.round(cur/totalPages*100));
       sliderEl.value = pct;
       pctEl.textContent = pct+'%';
+    } else if(totalPages>0 && cur===0){
+      sliderEl.value = 0;
+      pctEl.textContent = '0%';
     }
   }
 }
@@ -912,9 +917,9 @@ function openBookModal(id){
     const pct = b.progress||0;
     document.getElementById('libProgress').value   = pct;
     document.getElementById('libPctDisplay').textContent = pct+'%';
-    // Página actual calculada desde progreso y páginas totales
+    // Página actual: usar la guardada directamente, no recalcular desde %
     const cpEl = document.getElementById('libCurrentPage');
-    if(cpEl) cpEl.value = (b.pages&&pct) ? Math.round(b.pages*pct/100) : '';
+    if(cpEl) cpEl.value = b.currentPage || ((b.pages&&pct) ? Math.round(b.pages*pct/100) : '');
     // Emoji
     const ico = b.ico||'📚';
     document.getElementById('libIco').value = ico;
@@ -1131,7 +1136,9 @@ function saveBook(){
   if(_catRaw==='__new__' && cat==='otro') return; // validación falló
   const pages  = parseInt(document.getElementById('libPages').value)||0;
   const notes  = (document.getElementById('libNotes').value||'').trim();
-  const progress= parseInt(document.getElementById('libProgress').value)||0;
+  const curPageRaw = parseInt(document.getElementById('libCurrentPage')?.value)||0;
+  const currentPage = Math.min(curPageRaw, pages);
+  const progress= pages>0 && currentPage>0 ? Math.round(currentPage/pages*100) : parseInt(document.getElementById('libProgress').value)||0;
   const ico      = document.getElementById('libIco').value||'📚';
   const coverUrl = (document.getElementById('libCoverUrl')?.value||'').trim();
 
@@ -1140,7 +1147,7 @@ function saveBook(){
     if(idx<0) return;
     const prev = S.books[idx];
     const prevProg = prev.progress||0;
-    S.books[idx] = {...prev, title, author, status, cat, pages, notes, progress, ico, coverUrl,
+    S.books[idx] = {...prev, title, author, status, cat, pages, notes, progress, currentPage, ico, coverUrl,
       finishedAt: status==='done'&&prev.status!=='done' ? localISO() : (prev.finishedAt||null),
       updatedAt: Date.now()
     };
@@ -1168,7 +1175,7 @@ function saveBook(){
   } else {
     const id = 'b'+S.nBid;
     S.nBid++;
-    S.books.push({ id, title, author, status, cat, pages, notes, progress, ico, coverUrl,
+    S.books.push({ id, title, author, status, cat, pages, notes, progress, currentPage, ico, coverUrl,
       addedAt: localISO(), finishedAt: status==='done'?localISO():null, updatedAt: Date.now() });
     // XP: añadir libro
     gainXP(40);
