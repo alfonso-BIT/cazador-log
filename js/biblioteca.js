@@ -427,7 +427,7 @@ function renderLibBookOfMonth(){
           <div class="bom-bar-wrap"><div class="bom-bar-fill" style="width:${pct}%"></div></div>
           <div class="bom-stats">
             <span class="bom-pct">${pct}%</span>
-            ${b.pages?`<span class="bom-pages">· ${Math.round(b.pages*pct/100)} / ${b.pages} pág</span>`:''}
+            ${b.pages?`<span class="bom-pages">· ${b.currentPage||Math.round(b.pages*pct/100)} / ${b.pages} pág</span>`:''}
             <span class="bom-days">· ${daysLeft}d restantes</span>
           </div>
           ${pct>=100
