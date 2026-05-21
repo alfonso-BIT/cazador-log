@@ -433,6 +433,7 @@ function checkReset(){
     assignDailyMissions();
     assignWeeklyMission();
     assignMonthlyMission();
+    assignQuincenalMissions();
     save();
   } else {
     // FIX-BUG-CLAIM: si claimedDate coincide con el día actual, asegurar claimed=true.
@@ -442,6 +443,7 @@ function checkReset(){
     assignDailyMissions();
     assignWeeklyMission();
     assignMonthlyMission();
+    assignQuincenalMissions();
   }
 }
 
@@ -458,5 +460,108 @@ function updateResetUI(){
   if(lbl)lbl.textContent='RESET A LAS '+s;
   const rv=document.getElementById('rhVal');
   if(rv)rv.textContent=s;
+}
+
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  §QNC — SISTEMA DE MISIONES QUINCENALES (v31)                          ║
+// ╠══════════════════════════════════════════════════════════════════════════╣
+// ║  Reemplaza el sistema de 1 misión mensual por 22 misiones divididas     ║
+// ║  en 2 quincenas por mes.                                                ║
+// ║   Q1 = días 1–15   → primeras 11 misiones del pool (orden de creación) ║
+// ║   Q2 = días 16–fin → siguientes 11 misiones del pool                   ║
+// ║                                                                          ║
+// ║  Funciones:                                                              ║
+// ║   · getQuincenalKey()               → clave de la quincena actual       ║
+// ║   · getQuincenalMonthKey(y,m,q)     → clave para año/mes/quincena dado  ║
+// ║   · assignQuincenalMissions()       → asigna si la quincena cambió      ║
+// ║   · getQuincenalMissions(key)       → array de misiones de esa quincena ║
+// ║   · isQuincenalCompleted(id, key)   → bool — está esa misión marcada?   ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+function getQuincenalKey(){
+  const now = new Date();
+  const y  = now.getFullYear();
+  const mo = String(now.getMonth()+1).padStart(2,'0');
+  const q  = now.getDate() <= 15 ? 'Q1' : 'Q2';
+  return `${y}_M${mo}_${q}`;
+}
+
+function getQuincenalMonthKey(year, monthIdx, q){
+  // monthIdx: 0-based (enero=0). q: 'Q1' o 'Q2'
+  const mo = String(monthIdx+1).padStart(2,'0');
+  return `${year}_M${mo}_${q}`;
+}
+
+function assignQuincenalMissions(){
+  if(!S) return;
+  const key  = getQuincenalKey();
+  const pool = S.missions.filter(m => (m.freq||'daily') === 'monthly');
+
+  if(!pool.length){
+    // Sin misiones mensuales en el banco — registrar vacío pero no fallar
+    if(!S.quincenalAssigned || S.quincenalAssigned.key !== key){
+      S.quincenalAssigned = { key, ids: [] };
+      if(!S.quincenalHistory)  S.quincenalHistory  = {};
+      if(!S.quincenalClaimed)  S.quincenalClaimed  = {};
+      if(!S.quincenalHistory[key]){
+        S.quincenalHistory[key] = { ids: [], completed: [], xpEarned: 0 };
+      }
+      save();
+    }
+    return;
+  }
+
+  // Si ya está asignada esta quincena y todos los IDs siguen válidos → no reasignar
+  if(S.quincenalAssigned && S.quincenalAssigned.key === key){
+    const stillValid = S.quincenalAssigned.ids.every(id => pool.find(m => m.id === id));
+    if(stillValid) return;
+    // Algún ID fue borrado → reasignar limpio
+  }
+
+  // Ordenar pool por ID numérico para asignación determinista
+  const sorted = pool.slice().sort((a, b) => {
+    const na = parseInt((a.id||'').slice(1)) || 0;
+    const nb = parseInt((b.id||'').slice(1)) || 0;
+    return na - nb;
+  });
+
+  // Q1 → primeros 11, Q2 → siguientes 11 (o los que queden si hay menos de 22)
+  const isQ2     = key.endsWith('Q2');
+  const half1    = sorted.slice(0, 11);
+  const half2    = sorted.slice(11, 22);
+  const assigned = isQ2 ? half2 : half1;
+
+  S.quincenalAssigned = { key, ids: assigned.map(m => m.id) };
+
+  // Inicializar historial para esta quincena si no existe
+  if(!S.quincenalHistory)  S.quincenalHistory  = {};
+  if(!S.quincenalClaimed)  S.quincenalClaimed  = {};
+  if(!S.quincenalHistory[key]){
+    S.quincenalHistory[key] = {
+      ids:       assigned.map(m => m.id),
+      completed: [],
+      xpEarned:  0,
+    };
+  } else {
+    // Actualizar ids por si el pool cambió (misiones añadidas/eliminadas)
+    S.quincenalHistory[key].ids = assigned.map(m => m.id);
+    if(!S.quincenalHistory[key].completed) S.quincenalHistory[key].completed = [];
+    if(!S.quincenalHistory[key].xpEarned)  S.quincenalHistory[key].xpEarned  = 0;
+  }
+
+  save();
+}
+
+function getQuincenalMissions(key){
+  // Retorna array de objetos misión para la clave quincenal dada
+  const hist = S.quincenalHistory && S.quincenalHistory[key];
+  if(!hist || !hist.ids) return [];
+  return hist.ids.map(id => S.missions.find(m => m.id === id)).filter(Boolean);
+}
+
+function isQuincenalCompleted(missionId, key){
+  const hist = S.quincenalHistory && S.quincenalHistory[key];
+  if(!hist) return false;
+  return !!(hist.completed && hist.completed.includes(missionId));
 }
 

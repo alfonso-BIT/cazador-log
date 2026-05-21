@@ -1,3 +1,45 @@
+# STRUCTURE.md — Guía de navegación para edición con IA
+> Última actualización: optimización v1
+> Carga este archivo primero en cualquier sesión de IA para ubicarte sin leer el proyecto completo.
+
+## 📁 Archivos JS — qué editar para cada cambio
+
+| Si quieres cambiar... | Archivo |
+|---|---|
+| Toggle/claim de misión diaria, semanal, mensual | `ui-actions-missions.js` |
+| Swap de misiones, edición inline de misión | `ui-actions-missions.js` |
+| Tienda, inventario, canje de ítems | `ui-actions-shop.js` |
+| Agregar/editar ítems de tienda | `ui-actions-shop.js` |
+| Config (rangos, nombre, reset) | `ui-actions-shop.js` |
+| Render del tab de misiones | `ui-render.js` |
+| Render del libro del mes, stats, filtros | `biblioteca-core.js` |
+| Modal de edición de libro, guardar libro | `biblioteca-modal.js` |
+| Asignación semanal/mensual, reset de periodo | `auth.js` |
+| XP, niveles, streaks, logros | `rewards.js` |
+| Categorías, rangos, labels | `constants.js` |
+| Estado global S, defaultState | `storage.js` |
+| Inicialización al cargar | `ui-init.js` |
+| Finanzas, gráficas de dinero | `ui-finance.js` |
+| Animaciones de XP y efectos | `animations.js`, `effects.js` |
+
+## 🗂 index.html — marcadores de sección (§)
+Busca estos comentarios para ubicarte rápido:
+- `§TAB:missions` — Tab de misiones (activo al inicio)
+- `§SEC:missions-daily` — Misión diaria
+- `§SEC:missions-weekly` — Misión semanal
+- `§SEC:missions-monthly` — Misión mensual
+- `§SEC:missions-bank` — Banco de misiones
+- `§TAB:shop` — Tienda
+- `§TAB:inventory` — Inventario
+- `§TAB:profile` — Perfil y logros
+- `§TAB:finance` — Finanzas
+- `§TAB:library` — Biblioteca
+- `§TAB:config` — Configuración
+- `§MODAL:redeem` — Modal canje
+- `§MODAL:edit-item` — Modal editar ítem
+
+## 🔑 Estado global S — campos clave
+
 # CAZADOR QUEST LOG — MAPA DE ESTRUCTURA
 
 > Guía de navegación para modificaciones asistidas por IA.
@@ -106,3 +148,61 @@ S = {
 - **Fechas**: usar `localISO()` (YYYY-MM-DD en hora local Colombia). Nunca `new Date().toISOString()` (da UTC).
 - **Escape HTML**: usar `escH()` en todo texto dinámico que se inserta en innerHTML.
 - **Font scale**: todos los `font-size` en CSS deben usar `calc(Npx * var(--fs-scale))` para respetar el zoom del usuario.
+
+
+---
+
+## 🎨 Mapa de clases CSS por archivo
+
+### base.css — Variables globales y reset
+| Variable / Clase | Qué controla |
+|---|---|
+| `--gold`, `--bright`, `--accent` | Colores principales del tema |
+| `--fs-scale` | Escala global de fuentes |
+| `.tabcontent`, `.tabcontent.active` | Visibilidad de tabs |
+| `.shdr`, `.stitle`, `.sline` | Cabeceras de sección |
+| `.tip-block`, `.tip-detail` | Bloques de ayuda colapsables |
+| `.claimbtn` | Botón de reclamar recompensa |
+
+### cards.css — Tarjetas de misión
+| Clase | Qué controla |
+|---|---|
+| `.mcard` | Contenedor de misión |
+| `.mcard.done` | Estado completado (fondo verde) |
+| `.mchk`, `.mchk.yes` | Checkbox de misión |
+| `.mname`, `.mdesc`, `.mfoot` | Contenido de la tarjeta |
+| `.mxp`, `.mrnk`, `.mbonus` | Badges de XP, rango y bonus |
+| `.act-btn.swap` | Botón 🔀 cambiar misión |
+
+### dashboard.css — Tabs y layout general
+| Clase | Qué controla |
+|---|---|
+| `.tab`, `.tab.active` | Botones de navegación superior |
+| `.hud-bar`, `.hud-xp-fill` | Barra de XP del HUD |
+| `.hud-avatar` | Icono de perfil en HUD |
+| `.allquests-toggle-btn` | Botón +/- del banco de misiones |
+
+### modals.css — Modales y overlays
+| Clase | Qué controla |
+|---|---|
+| `#modal.show` | Modal de confirmación |
+| `#delInvModal.show` | Modal de borrar ítem |
+| `.modal-overlay` | Fondo oscuro de modales |
+| `.modal-box` | Caja blanca del modal |
+
+### biblioteca.css — Tab de libros
+| Clase | Qué controla |
+|---|---|
+| `.lib-grid`, `.lib-list` | Vista galería vs lista |
+| `.lib-card`, `.lib-card.reading` | Tarjeta de libro y estado leyendo |
+| `.bom-bar-fill` | Barra de progreso libro del mes |
+| `.bom-stats`, `.bom-pct` | Stats del libro del mes |
+| `.lib-modal-btns`, `.lib-mbtn` | Botones del modal de libro |
+| `.lib-achiev-grid` | Grid de logros de lectura |
+
+### responsive.css — Breakpoints
+| Media query | Aplica a |
+|---|---|
+| `max-width: 768px` | Tablets y móviles grandes |
+| `max-width: 480px` | Móviles pequeños |
+| `.txt-short`, `.txt-full` | Texto corto/largo según pantalla |

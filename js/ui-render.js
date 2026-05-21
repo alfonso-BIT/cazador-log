@@ -62,6 +62,7 @@ function render(){
   }
   // ── Renders condicionales por tab activo ──
   if(activeTab === 'missions')   renderAllQuests();
+  if(activeTab === 'missions' && typeof renderLibBookOfMonth === 'function') renderLibBookOfMonth();
   if(activeTab === 'shop')       renderShop();
   if(activeTab === 'inventory')  renderInventory();
   if(activeTab === 'perfil')     renderPerfil();
@@ -193,51 +194,151 @@ function renderWeeklyMission(){
 </div>`;
 }
 
+// ╔══════════════════════════════════════════════════════════════════════════╗
+// ║  §12b — QUINCENAL GRID RENDER (v31)                                     ║
+// ║  Reemplaza renderMonthlyMission() con un grid de 12 meses estilo        ║
+// ║  finanzas. Cada celda muestra un SVG donut verde/rojo con el avance     ║
+// ║  de la quincena. Click en mes activo → overlay con las 11 misiones.     ║
+// ╚══════════════════════════════════════════════════════════════════════════╝
+
+// Nombres cortos de meses para las celdas del grid
+const QNC_MONTH_NAMES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
+
 function renderMonthlyMission(){
-  const el = document.getElementById('monthly-mlist');
-  const sec = document.getElementById('monthly-section');
-  if(!el || !sec) return;
-  const m = getMonthlyMission();
-  const done = !!m?.monthlyDone;
-  const claimed = !!S.monthlyClaimed;
-  // Ocultar sección si no hay misión O si ya fue completada Y el bonus ya fue reclamado
-  if(!m || (done && claimed)){
-    sec.style.display = 'none';
-    return;
+  const grid  = document.getElementById('quincenal-grid');
+  const badge = document.getElementById('quincenal-period-badge');
+  const sec   = document.getElementById('monthly-section');
+  if(!grid) return;
+  if(sec) sec.style.display = '';
+
+  // Garantizar asignación de la quincena actual antes de renderizar
+  if(typeof assignQuincenalMissions === 'function') assignQuincenalMissions();
+
+  const now          = new Date();
+  const currentYear  = now.getFullYear();
+  const currentMonth = now.getMonth();   // 0-based
+  const currentDay   = now.getDate();
+  const currentQ     = currentDay <= 15 ? 'Q1' : 'Q2';
+
+  // Actualizar badge de periodo activo
+  if(badge){
+    badge.textContent = QNC_MONTH_NAMES[currentMonth] + ' ' + currentYear + ' · ' + currentQ;
   }
-  sec.style.display = '';
-  const xp = XPR[m.rank] || 10;
-  const ico = CAT_LABELS[m.cat]||'⚡';
-  const mult = S.streak > 0 ? 1.0 : 0.5;
-  const bonus = Math.floor(xp * mult);
-  const multLbl = S.streak > 0 ? '🔥 x1.0 racha' : 'x0.5 sin racha';
-  const btn = document.getElementById('monthly-claimbtn');
-  if(btn){
-    btn.disabled = !done || claimed;
-    btn.textContent = claimed
-      ? '◈ RECOMPENSA YA RECLAMADA ◈'
-      : `◈ RECLAMAR +${bonus} XP BONUS [${multLbl}] ◈`;
+
+  // Helper: genera el path SVG de un arco de tarta
+  function arc(cx, cy, r, pct, startAngle){
+    if(pct <= 0) return '';
+    if(pct >= 1) pct = 0.9999;
+    const endAngle = startAngle + pct * 2 * Math.PI;
+    const x1 = cx + r * Math.sin(startAngle);
+    const y1 = cy - r * Math.cos(startAngle);
+    const x2 = cx + r * Math.sin(endAngle);
+    const y2 = cy - r * Math.cos(endAngle);
+    const lg = pct > 0.5 ? 1 : 0;
+    return `<path d="M${cx},${cy} L${x1.toFixed(2)},${y1.toFixed(2)} A${r},${r} 0 ${lg},1 ${x2.toFixed(2)},${y2.toFixed(2)} Z"`;
   }
-  el.innerHTML = `
-<div class="mcard ${done?'done':''}" id="mc-monthly-${m.id}">
-  <div class="mtop">
-    <div class="mchk ${done?'yes':''}" onclick="toggleMonthly()">${done?'✓':''}</div>
-    <div class="mcontent">
-      <div class="mname">${escH(m.name)}</div>
-      ${m.desc?`<div class="mdesc">${escH(m.desc)}</div>`:''}
-      <div class="mfoot">
-        <span class="mxp" data-short="+${xp}">+${xp} XP</span>
-        <span class="mrnk r${m.rank.toLowerCase()}" data-short="${m.rank}">${m.rank}-RANK</span>
-        <span class="mtype">${ico}</span>
-        <span class="mfreq" data-short="🗓️M" style="font-size:calc(11px * var(--fs-scale));">🗓️</span>
-        <span class="mbonus" data-short="B" style="font-size:calc(9px * var(--fs-scale));padding:2px 6px;border-radius:3px;background:rgba(30,30,60,0.7);color:${S.streak>0?'#fbbf24':'#94a3b8'};letter-spacing:1px;font-family:'Orbitron',monospace;" title="Bonus al reclamar">BONUS ${multLbl}</span>
-        <div class="mactions">
-          ${done ? '' : '<button class="act-btn swap" onclick="swapMonthlyMission(event)" title=\"🔀 Cambiar misión mensual\">🔀</button>'}
-        </div>
-      </div>
-    </div>
-  </div>
-</div>`;
+
+  let cards = '';
+
+  for(let mo = 0; mo < 12; mo++){
+    const isCurrent = (mo === currentMonth);
+    const isFuture  = (mo > currentMonth);
+
+    const keyQ1 = getQuincenalMonthKey(currentYear, mo, 'Q1');
+    const keyQ2 = getQuincenalMonthKey(currentYear, mo, 'Q2');
+    const histQ1 = (S.quincenalHistory && S.quincenalHistory[keyQ1]) || { ids:[], completed:[] };
+    const histQ2 = (S.quincenalHistory && S.quincenalHistory[keyQ2]) || { ids:[], completed:[] };
+
+    let totalMissions, doneMissions;
+
+    if(isCurrent){
+      // Mes activo: mostrar solo la quincena en curso
+      const activeHist = currentQ === 'Q1' ? histQ1 : histQ2;
+      totalMissions = activeHist.ids.length || 11;
+      doneMissions  = (activeHist.completed || []).length;
+    } else if(isFuture){
+      // Futuro: vacío
+      totalMissions = 0;
+      doneMissions  = 0;
+    } else {
+      // Pasado: suma de ambas quincenas
+      totalMissions = (histQ1.ids.length || 0) + (histQ2.ids.length || 0);
+      if(totalMissions === 0) totalMissions = 22; // estimado si no hay historial
+      doneMissions  = (histQ1.completed || []).length + (histQ2.completed || []).length;
+    }
+
+    const pctDone    = totalMissions > 0 ? doneMissions / totalMissions : 0;
+    const pctPending = 1 - pctDone;
+    const cx = 24, cy = 24, r = 18;
+
+    // Construir SVG donut
+    let pieInner = '';
+    if(!isFuture && totalMissions > 0){
+      const doneArc = arc(cx, cy, r, pctDone, 0);
+      const pendArc = arc(cx, cy, r, pctPending, pctDone * 2 * Math.PI);
+      if(doneArc) pieInner += `${doneArc} fill="#4ade80" opacity="0.9"/>`;
+      if(pendArc) pieInner += `${pendArc} fill="#ff6644" opacity="0.85"/>`;
+      // Agujero central del donut
+      pieInner += `<circle cx="${cx}" cy="${cy}" r="11" fill="rgba(0,10,30,0.95)"/>`;
+      // Porcentaje en el centro
+      const pct100 = Math.round(pctDone * 100);
+      const centroColor = pctDone >= 1 ? '#4ade80' : '#ffffff';
+      pieInner += `<text x="${cx}" y="${cy+3}" text-anchor="middle"
+        font-family="Orbitron,monospace" font-size="7" fill="${centroColor}">${pct100}%</text>`;
+    } else {
+      // Sin datos o futuro: círculo vacío
+      pieInner = `<circle cx="${cx}" cy="${cy}" r="${r}"
+        fill="rgba(255,255,255,0.03)" stroke="rgba(255,255,255,0.07)" stroke-width="1"/>`;
+    }
+
+    // Estilos de la celda según estado
+    const borderColor = isCurrent
+      ? 'var(--green)'
+      : (doneMissions > 0 ? 'rgba(0,100,200,0.4)' : 'rgba(255,255,255,0.07)');
+    const glowStyle    = isCurrent ? 'box-shadow:0 0 12px rgba(74,222,128,0.25);' : '';
+    const opacityStyle = isFuture  ? 'opacity:0.35;' : '';
+    const cursorStyle  = !isFuture  ? 'cursor:pointer;' : 'cursor:default;';
+    const monthColor   = isCurrent
+      ? 'var(--green)'
+      : (doneMissions > 0 ? 'rgba(74,222,128,0.55)' : 'var(--muted)');
+
+    // Click solo en meses no futuros
+    const clickFn = !isFuture
+      ? `openQuincenalDetail(${currentYear},${mo})`
+      : '';
+
+    // Texto de conteo (solo meses con datos)
+    const countLabel = (!isFuture && totalMissions > 0)
+      ? `<div style="font-family:'Orbitron',monospace;font-size:7px;letter-spacing:1px;
+                     color:${doneMissions >= totalMissions ? '#4ade80' : 'var(--muted)'};">
+           ${doneMissions}/${totalMissions}
+         </div>`
+      : `<div style="font-size:7px;color:rgba(255,255,255,0.12);">—</div>`;
+
+    // Badge Q1/Q2 en mes activo
+    const qBadge = isCurrent
+      ? `<div style="position:absolute;top:3px;right:4px;font-family:'Orbitron',monospace;
+                     font-size:6px;color:var(--green);letter-spacing:1px;">${currentQ}</div>`
+      : '';
+
+    cards += `
+      <div onclick="${clickFn}"
+           style="background:rgba(0,15,40,0.8);border:1px solid ${borderColor};
+                  ${glowStyle}${opacityStyle}padding:10px 8px;${cursorStyle}
+                  user-select:none;display:flex;flex-direction:column;
+                  align-items:center;gap:5px;transition:border-color .2s,box-shadow .2s;
+                  position:relative;"
+           onmouseenter="if(!${isFuture}) this.style.borderColor='rgba(0,150,255,0.6)'"
+           onmouseleave="this.style.borderColor='${borderColor}'">
+        ${qBadge}
+        <div style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;
+                    color:${monthColor};">${QNC_MONTH_NAMES[mo]}</div>
+        <svg width="48" height="48" viewBox="0 0 48 48">${pieInner}</svg>
+        ${countLabel}
+      </div>`;
+  }
+
+  grid.innerHTML = cards;
 }
 
 function renderMissionCard(m, fromDaily){

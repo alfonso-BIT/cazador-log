@@ -173,6 +173,7 @@
     <button class="claimbtn" id="claimbtn" onclick="claimDaily()" disabled><span class="txt-short">◈ RECLAMAR ◈</span><span class="txt-full">◈ RECLAMAR RECOMPENSA DIARIA ◈</span></button>
     </div><!-- end daily-section -->
 
+    <!-- §SEC:missions-weekly — Misión semanal -->
     <!-- MISIÓN SEMANAL -->
     <div id="weekly-section" style="margin-top:14px;">
       <div class="shdr"><div class="sline"></div><span class="stitle">📆 MISIÓN SEMANAL</span><div class="sline"></div></div>
@@ -185,18 +186,52 @@
       <button class="claimbtn" id="weekly-claimbtn" onclick="claimWeekly()" disabled style="background:linear-gradient(135deg,rgba(251,191,36,0.15),rgba(217,119,6,0.12));border-color:rgba(251,191,36,0.4);"><span class="txt-short">◈ RECLAMAR ◈</span><span class="txt-full">◈ RECLAMAR RECOMPENSA SEMANAL ◈</span></button>
     </div><!-- end weekly-section -->
 
-    <!-- MISIÓN MENSUAL -->
+    <!-- §SEC:missions-monthly — Sistema Quincenal (v31) -->
     <div id="monthly-section" style="margin-top:14px;">
-      <div class="shdr"><div class="sline"></div><span class="stitle">🗓️ MISIÓN MENSUAL</span><div class="sline"></div></div>
-      <div class="tip-block">
-        <span class="tip-base">Un gran desafío mensual con recompensa élite.</span>
-        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>
-        <div class="tip-detail">El sistema elige 1 misión mensual del banco. Puedes completarla cuando quieras durante el mes. La recompensa es la más alta del sistema. Se resetea automáticamente el primer día de cada mes. Usa 🔀 para cambiarla si prefieres otra.</div>
+      <div class="shdr" style="cursor:pointer;user-select:none;" onclick="toggleQuincenalSection()">
+        <div class="sline"></div>
+        <span class="stitle">🗓️ MISIONES QUINCENALES</span>
+        <span id="quincenal-toggle-btn"
+              style="font-family:'Orbitron',monospace;font-size:13px;line-height:1;
+                     color:var(--green);border:1px solid rgba(74,222,128,0.35);
+                     width:20px;height:20px;display:inline-flex;align-items:center;
+                     justify-content:center;margin-left:8px;flex-shrink:0;">−</span>
+        <div class="sline"></div>
       </div>
-      <div id="monthly-mlist"></div>
-      <button class="claimbtn" id="monthly-claimbtn" onclick="claimMonthly()" disabled style="background:linear-gradient(135deg,rgba(167,139,250,0.15),rgba(124,58,237,0.12));border-color:rgba(167,139,250,0.4);"><span class="txt-short">◈ RECLAMAR ◈</span><span class="txt-full">◈ RECLAMAR RECOMPENSA MENSUAL ◈</span></button>
-    </div><!-- end monthly-section -->
+      <div id="quincenal-body">
+      <div class="tip-block">
+        <span class="tip-base">22 misiones divididas en 2 quincenas por mes.</span>
+        <button class="tip-toggle" onclick="tipToggle(this)">ⓘ ¿CÓMO FUNCIONA?</button>
+        <div class="tip-detail">El sistema divide tus 22 misiones mensuales en dos grupos de 11. La primera quincena (días 1–15) activa el primer grupo; la segunda (días 16–fin) activa el segundo. Haz clic en el mes actual para ver y marcar tus misiones. Al completar las 11 de una quincena puedes reclamar el bonus de XP.</div>
+      </div>
 
+      <!-- Badge de periodo activo -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;padding-left:2px;">
+        <span style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;color:var(--muted);">PERIODO ACTIVO:</span>
+        <span id="quincenal-period-badge"
+              style="font-family:'Orbitron',monospace;font-size:8px;letter-spacing:2px;
+                     background:rgba(74,222,128,0.1);border:1px solid rgba(74,222,128,0.3);
+                     padding:2px 8px;color:var(--green);"></span>
+      </div>
+
+      <!-- Grid de 12 meses — pintado por renderMonthlyMission() -->
+      <div id="quincenal-grid"
+           style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;"></div>
+
+      <!-- Leyenda -->
+      <div style="margin-top:8px;font-family:'Orbitron',monospace;font-size:7px;
+                  letter-spacing:2px;color:var(--muted);display:flex;gap:16px;padding-left:4px;">
+        <span style="display:flex;align-items:center;gap:4px;">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#4ade80;"></span>COMPLETADAS
+        </span>
+        <span style="display:flex;align-items:center;gap:4px;">
+          <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:#ff6644;"></span>PENDIENTES
+        </span>
+      </div>
+      </div><!-- end quincenal-body -->
+    </div><!-- end monthly-section quincenal -->
+
+    <!-- §SEC:missions-bank — Banco de misiones -->
     <!-- BANCO DE MISIONES — expandible con botón + -->
     <div style="margin-top:16px;">
       <div class="shdr" style="cursor:pointer;user-select:none;" onclick="toggleAllQuests()">
@@ -278,6 +313,7 @@
   </div>
 
   <!-- TAB: TIENDA -->
+  <!-- §TAB:shop — Tienda de recompensas -->
   <div class="tabcontent" id="tab-shop">
     <div class="shdr"><div class="sline"></div><span class="stitle">◈ <span class="txt-short">TIENDA</span><span class="txt-full">TIENDA — CANJEA TUS DESEOS</span></span><div class="sline"></div></div>
     <div class="tip-block">
@@ -309,6 +345,7 @@
   </div>
 
   <!-- TAB: INVENTARIO (lo comprado) -->
+  <!-- §TAB:inventory — Inventario -->
   <div class="tabcontent" id="tab-inventory">
     <div class="shdr"><div class="sline"></div><span class="stitle">◈ <span class="txt-short">INVENTARIO</span><span class="txt-full">INVENTARIO — OBJETOS OBTENIDOS</span></span><div class="sline"></div></div>
     <div class="tip-block">
@@ -321,6 +358,7 @@
   </div>
 
   <!-- TAB: PERFIL -->
+  <!-- §TAB:profile — Perfil y logros -->
   <div class="tabcontent" id="tab-perfil">
 
     <!-- IDs ocultos requeridos por renderPerfil() — no se muestran -->
@@ -368,6 +406,7 @@
   </div>
 
   <!-- TAB: CONFIGURAR -->
+  <!-- §TAB:config — Configuración -->
   <div class="tabcontent" id="tab-config">
 
     <!-- ── CONTROLES DE SISTEMA ────────────────────────────────────────────
@@ -644,6 +683,7 @@
   </div>
 
   <!-- TAB: DINERO -->
+  <!-- §TAB:finance — Finanzas -->
   <div class="tabcontent" id="tab-dinero">
     <div class="shdr"><div class="sline"></div><span class="stitle">💰 CONTROL DE FINANZAS</span><div class="sline"></div></div>
 
@@ -827,6 +867,7 @@
   </div>
 
   <!-- TAB: BIBLIOTECA -->
+  <!-- §TAB:library — Biblioteca -->
   <div class="tabcontent" id="tab-biblioteca">
     <!-- Renderizado dinámico por renderBiblioteca() en biblioteca.js -->
   </div>
@@ -1227,8 +1268,10 @@
   <script src="js/ui-finance.js"></script>
   <script src="js/ui-utils.js"></script>
   <script src="js/ui-mood.js"></script>
-  <script src="js/ui-actions.js"></script>
-  <script src="js/biblioteca.js"></script>
+  <script src="js/ui-actions-missions.js"></script>
+  <script src="js/ui-actions-shop.js"></script>
+  <script src="js/biblioteca-core.js"></script>
+  <script src="js/biblioteca-modal.js"></script>
   <script src="js/ui-render.js"></script>
   <script src="js/ui-init.js"></script>
 
@@ -1245,7 +1288,15 @@
     </div>
   </div>
 
-
+  <!-- ══ Overlay Quincenal (v31) ══════════════════════════════════════════ -->
+  <!-- Creado aquí como placeholder; _renderQuincenalOverlay() llena el inner -->
+  <div id="quincenalOverlay"
+       style="display:none;position:fixed;inset:0;z-index:9999;
+              background:rgba(0,0,0,0.88);overflow-y:auto;"
+       onclick="if(event.target===this)closeQuincenalDetail()">
+    <div id="quincenalOverlayInner"
+         style="max-width:600px;margin:0 auto;padding:16px;"></div>
+  </div>
 
 </body>
 </html>

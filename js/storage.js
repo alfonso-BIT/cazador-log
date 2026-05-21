@@ -27,6 +27,10 @@ function loadState(user){
       if(!merged.monthlyAssigned) merged.monthlyAssigned = null;
       if(merged.weeklyClaimed === undefined) merged.weeklyClaimed = false;
       if(merged.monthlyClaimed === undefined) merged.monthlyClaimed = false;
+      // Migración: campos del sistema quincenal (v31)
+      if(!merged.quincenalAssigned) merged.quincenalAssigned = null;
+      if(!merged.quincenalHistory)  merged.quincenalHistory  = {};
+      if(!merged.quincenalClaimed)  merged.quincenalClaimed  = {};
       if(!merged.transactions)  merged.transactions  = [];
       if(!merged.nTid)          merged.nTid          = 1;
       if(!merged.finPeriod)     merged.finPeriod     = 'day';
@@ -234,6 +238,12 @@ function defaultState(){
     readingLog:       [],
     libAchievements:  [],   // inicializado en renderBiblioteca() con libDefaultAchievements()
     libAchievCompleted: {},
+    // ── Sistema Quincenal (v31) ─────────────────────────────────────────────
+    // Reemplaza el sistema de 1 misión mensual por 22 misiones divididas en
+    // 2 quincenas (Q1: días 1-15, Q2: días 16-fin). Cada quincena asigna 11.
+    quincenalAssigned: null,   // { key: '2026_M05_Q1', ids: ['m1',...] }
+    quincenalHistory:  {},     // { '2026_M05_Q1': { ids, completed, xpEarned } }
+    quincenalClaimed:  {},     // { '2026_M05_Q1': true }
   };
 }
 
