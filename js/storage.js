@@ -23,6 +23,7 @@ function loadState(user){
       if(!merged.catCounts)     merged.catCounts     = {};
       if(!merged.dailyAssigned) merged.dailyAssigned = null;
       if(!merged.weeklyAssigned) merged.weeklyAssigned = null;
+      if(!merged.weeklyDaysChecked) merged.weeklyDaysChecked = [];
       if(!merged.monthlyAssigned) merged.monthlyAssigned = null;
       if(merged.weeklyClaimed === undefined) merged.weeklyClaimed = false;
       if(merged.monthlyClaimed === undefined) merged.monthlyClaimed = false;
@@ -220,6 +221,7 @@ function defaultState(){
     minBalance:    0,
     shopXP:        0,
     weeklyAssigned:  null,
+    weeklyDaysChecked: [],  // array de fechas ISO completadas (7 = misión rotada)
     monthlyAssigned: null,
     weeklyClaimed:   false,
     monthlyClaimed:  false,

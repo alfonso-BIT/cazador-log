@@ -296,6 +296,7 @@ function assignWeeklyMission(){
   const pick = candidates[Math.floor(Math.random() * candidates.length)];
   pool.forEach(m => { m.weeklyDone = false; });
   S.weeklyClaimed = false;
+  S.weeklyDaysChecked = [];
   S.weeklyAssigned = { key: weekKey, id: pick.id };
   save();
 }

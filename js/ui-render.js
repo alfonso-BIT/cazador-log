@@ -161,13 +161,23 @@ function renderWeeklyMission(){
       ? '◈ RECOMPENSA YA RECLAMADA ◈'
       : `◈ RECLAMAR +${bonus} XP BONUS [${multLbl}] ◈`;
   }
+  const days = (S.weeklyDaysChecked||[]).length;
+  const todayKey = getTodayISODate ? getTodayISODate() : new Date().toISOString().slice(0,10);
+  const checkedToday = (S.weeklyDaysChecked||[]).includes(todayKey);
+  // Build 7 day bubbles
+  const dayBubbles = Array.from({length:7},(_,i)=>{
+    const filled = i < days;
+    return `<span style="display:inline-block;width:18px;height:18px;border-radius:50%;margin:0 2px;background:${filled?'#fbbf24':'rgba(255,255,255,0.1)'};border:1px solid ${filled?'#fbbf24':'rgba(255,255,255,0.2)'};vertical-align:middle;font-size:10px;line-height:18px;text-align:center;">${filled?'✓':''}</span>`;
+  }).join('');
+
   el.innerHTML = `
 <div class="mcard ${done?'done':''}" id="mc-weekly-${m.id}">
   <div class="mtop">
-    <div class="mchk ${done?'yes':''}" onclick="toggleWeekly()">${done?'✓':''}</div>
+    <div class="mchk ${checkedToday?'yes':''}" onclick="toggleWeekly()">${checkedToday?'✓':''}</div>
     <div class="mcontent">
       <div class="mname">${escH(m.name)}</div>
       ${m.desc?`<div class="mdesc">${escH(m.desc)}</div>`:''}
+      <div style="margin:6px 0 4px;">${dayBubbles} <span style="font-size:calc(9px * var(--fs-scale));color:#fbbf24;font-family:'Orbitron',monospace;vertical-align:middle;">${days}/7 DÍAS</span></div>
       <div class="mfoot">
         <span class="mxp" data-short="+${xp}">+${xp} XP</span>
         <span class="mrnk r${m.rank.toLowerCase()}" data-short="${m.rank}">${m.rank}-RANK</span>

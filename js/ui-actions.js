@@ -201,31 +201,52 @@ function claimDaily(){
 }
 
 function toggleWeekly(missionId){
-  // If called from bank with a specific id, find that mission; else use assigned weekly
   const m = missionId ? S.missions.find(x=>x.id===missionId) : getWeeklyMission();
   if(!m) return;
   const mxp = m.xp || XPR[m.rank] || 10;
-  if(m.weeklyDone){
+  const today = getTodayISODate();
+
+  // Asegurar que el array existe
+  if(!S.weeklyDaysChecked) S.weeklyDaysChecked = [];
+
+  const alreadyToday = S.weeklyDaysChecked.includes(today);
+
+  if(alreadyToday){
+    // Desmarcar hoy
+    S.weeklyDaysChecked = S.weeklyDaysChecked.filter(d => d !== today);
     m.weeklyDone = false;
     m.updatedAt = Date.now();
     gainXP(-mxp);
     S.totalComp = Math.max(0, S.totalComp-1);
     if(S.catCounts&&S.catCounts[m.cat]) S.catCounts[m.cat]=Math.max(0,(S.catCounts[m.cat]||1)-1);
     logDailyMission(m.cat, mxp, false);
-  } else {
-    m.weeklyDone = true;
-    m.updatedAt = Date.now();
-    m.lastDoneDate = getTodayISODate();
-    gainXP(mxp);
-    S.totalComp++;
-    if(!S.catCounts) S.catCounts={};
-    S.catCounts[m.cat]=(S.catCounts[m.cat]||0)+1;
-    logDailyMission(m.cat, mxp, true);
-    notif('📆 +'+mxp+' XP ◈ MISIÓN SEMANAL: '+m.name);
     save(); renderWithFlash();
-    if(typeof FX!=='undefined') FX.questComplete(m.id, mxp);
     return;
   }
+
+  // Marcar hoy
+  S.weeklyDaysChecked.push(today);
+  m.updatedAt = Date.now();
+  m.lastDoneDate = today;
+  gainXP(mxp);
+  S.totalComp++;
+  if(!S.catCounts) S.catCounts={};
+  S.catCounts[m.cat]=(S.catCounts[m.cat]||0)+1;
+  logDailyMission(m.cat, mxp, true);
+
+  const daysCompleted = S.weeklyDaysChecked.length;
+
+  // ¿Completó los 7 días?
+  if(daysCompleted >= 7){
+    m.weeklyDone = true;
+    notif('🏆 ¡7 DÍAS COMPLETOS! MISIÓN SEMANAL TERMINADA — RECLAMA TU RECOMPENSA');
+    if(typeof FX!=='undefined') FX.questComplete(m.id, mxp);
+  } else {
+    const remaining = 7 - daysCompleted;
+    notif('📆 +'+mxp+' XP ◈ DÍA '+daysCompleted+'/7 — faltan '+remaining+' día'+(remaining>1?'s':''));
+    if(typeof FX!=='undefined') FX.questComplete(m.id, mxp);
+  }
+
   save(); renderWithFlash();
 }
 
@@ -243,9 +264,27 @@ function claimWeekly(){
   const mxp = m.xp || XPR[m.rank] || 10;
   const multiplier = S.streak > 0 ? 1.0 : 0.5;
   const bonus = Math.floor(mxp * multiplier);
-  gainXP(bonus); S.weeklyClaimed = true; save(); renderWithFlash();
+  gainXP(bonus);
+  S.weeklyClaimed = true;
   const tag = S.streak > 0 ? '🔥 RACHA x1.0' : 'x0.5';
   notif('◈ RECOMPENSA SEMANAL: +'+bonus+' XP BONUS ['+tag+'] ◈');
+
+  // ── Rotación automática a la siguiente misión ──────────────────────────
+  const pool = S.missions.filter(x => x.freq === 'weekly');
+  const currentId = S.weeklyAssigned?.id;
+  const fresh2 = pool.filter(x => x.id !== currentId);
+  const candidates = fresh2.length ? fresh2 : pool;
+  if(candidates.length){
+    const pick = candidates[Math.floor(Math.random() * candidates.length)];
+    pool.forEach(x => { x.weeklyDone = false; });
+    S.weeklyDaysChecked = [];
+    S.weeklyAssigned = { key: getWeekKey(), id: pick.id };
+    S.weeklyClaimed = false;
+    notif('🔄 NUEVA MISIÓN SEMANAL ASIGNADA: '+pick.name);
+  }
+  // ───────────────────────────────────────────────────────────────────────
+
+  save(); renderWithFlash();
   _claimingWeekly = false;
 }
 
